@@ -7,13 +7,15 @@
         ax-load
         x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('leaflet-map-picker', 'afsakar/filament-leaflet-map-picker'))]"
         ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('leaflet-map-picker', 'afsakar/filament-leaflet-map-picker') }}"
+        wire:key="{{ $getStatePath() }}"
         x-data="leafletMapPicker({
-            location: $wire.$entangle('{{ $getStatePath() }}'),
+            location: $wire.{{ $applyStateBindingModifiers("\$entangle('{$getStatePath()}')") }},
             config: {{ $getMapConfig() }},
             @if($getCustomMarker())
                 customMarker: {{ json_encode($getCustomMarker()) }},
             @endif
         })"
+        x-on:livewire:update.window="updateMapFromAlpine()"
         x-ignore
     >
         <div class="relative w-full mx-auto rounded-lg overflow-hidden shadow bg-gray-50 dark:bg-gray-700">
