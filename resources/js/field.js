@@ -38,28 +38,28 @@ export default function leafletMapPicker({ location, config }) {
                 }
             },
             google: {
-                url: 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                url: 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
                 options: {
                     attribution: '&copy; Google Maps',
                     subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
                 }
             },
             googleSatellite: {
-                url: 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                url: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
                 options: {
                     attribution: '&copy; Google Maps',
                     subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
                 }
             },
             googleTerrain: {
-                url: 'http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
+                url: 'https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
                 options: {
                     attribution: '&copy; Google Maps',
                     subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
                 }
             },
             googleHybrid: {
-                url: 'http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
+                url: 'https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
                 options: {
                     attribution: '&copy; Google Maps',
                     subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
@@ -89,7 +89,10 @@ export default function leafletMapPicker({ location, config }) {
         },
 
         initMap: function () {
-            this.map = L.map(this.$refs.mapContainer).setView(
+            this.map = L.map(this.$refs.mapContainer, {
+                maxZoom: 21,
+                minZoom: 1
+            }).setView(
                 [this.getCoordinates().lat, this.getCoordinates().lng],
                 this.config.defaultZoom
             );
@@ -257,7 +260,23 @@ export default function leafletMapPicker({ location, config }) {
 
             const provider = this.tileProviders[providerName] || this.tileProviders.openstreetmap;
 
-            this.tileLayer = L.tileLayer(provider.url, provider.options).addTo(this.map);
+            this.tileLayer = L.tileLayer(provider.url, {
+                ...provider.options,
+                maxZoom: 21,
+                maxNativeZoom: provider.options.maxNativeZoom || 19
+            }).addTo(this.map);
+
+            this.tileLayer.on('tileerror', e => {
+                // parse out which subdomain failed
+                const m = e.tile.src.match(/\/\/([^\.]+)\./);
+                if (!m) return;
+                const subs = this.tileLayer.options.subdomains;
+                const i    = subs.indexOf(m[1]);
+                const next = subs[(i + 1) % subs.length];
+
+                // swap in the next subdomain and retry
+                e.tile.src = e.tile.src.replace(m[1], next);
+            });
         },
 
         addTileSelectorControl: function() {
