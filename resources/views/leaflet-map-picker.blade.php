@@ -10,6 +10,7 @@
         wire:key="{{ $getStatePath() }}"
         x-data="leafletMapPicker({
             location: $wire.{{ $applyStateBindingModifiers("\$entangle('{$getStatePath()}')") }},
+            cwSides: $wire.entangle('{{ str_replace('picker', 'cw_coordinated_sides', $getStatePath()) }}').live,
             config: {{ $getMapConfig() }},
             @if($getCustomMarker())
                 customMarker: {{ json_encode($getCustomMarker()) }},

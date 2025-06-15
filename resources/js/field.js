@@ -1,9 +1,11 @@
 import * as L from 'leaflet';
 
-export default function leafletMapPicker({ location, config }) {
+export default function leafletMapPicker({ location, cwSides, config }) {
     return {
         map: null,
         marker: null,
+        polygon: null,       // ← store your polygon layer
+        cwSides,             // ← injected repeater state
         lat: null,
         lng: null,
         location: null,
@@ -86,6 +88,29 @@ export default function leafletMapPicker({ location, config }) {
 
             this.initMap()
             this.$watch('location', (value) => this.updateMapFromAlpine());
+            // Watch for any change in the array or its objects (deep watch) :contentReference[oaicite:2]{index=2}
+            this.$watch('cwSides', () => this.updatePolygon(), { deep: true })
+            // Initial draw
+            this.updatePolygon()
+        },
+
+        updatePolygon() {
+            // Remove previous polygon
+            if (this.polygon) {
+                this.map.removeLayer(this.polygon)
+            }
+            // Build an array of [lat, lng] pairs, skipping incomplete points
+            const latlngs = this.cwSides
+                .filter(side => side.lat != null && side.lng != null)
+                .map(side => [ side.lat, side.lng ])
+
+            // Only draw if we have at least two points
+            if (latlngs.length > 1) {
+                this.polygon = L.polygon(latlngs, { color: 'blue', weight: 2 })
+                .addTo(this.map)
+                // Optionally: zoom to fit
+                this.map.fitBounds(this.polygon.getBounds())
+            }
         },
 
         initMap: function () {
