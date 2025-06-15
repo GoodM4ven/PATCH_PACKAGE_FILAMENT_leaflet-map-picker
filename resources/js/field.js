@@ -95,20 +95,22 @@ export default function leafletMapPicker({ location, cwSides, config }) {
         },
 
         updatePolygon() {
-            // Remove previous polygon
             if (this.polygon) {
                 this.map.removeLayer(this.polygon)
             }
-            // Build an array of [lat, lng] pairs, skipping incomplete points
-            const latlngs = this.cwSides
+
+            // turn the keyed object into a numeric array
+            const sides = Array.isArray(this.cwSides)
+                ? this.cwSides
+                : Object.values(this.cwSides)
+
+            const latlngs = sides
                 .filter(side => side.lat != null && side.lng != null)
                 .map(side => [ side.lat, side.lng ])
 
-            // Only draw if we have at least two points
             if (latlngs.length > 1) {
                 this.polygon = L.polygon(latlngs, { color: 'blue', weight: 2 })
                 .addTo(this.map)
-                // Optionally: zoom to fit
                 this.map.fitBounds(this.polygon.getBounds())
             }
         },
