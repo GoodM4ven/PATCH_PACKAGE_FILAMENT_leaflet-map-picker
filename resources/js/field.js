@@ -90,7 +90,7 @@ export default function mapTilerPicker({ config }) {
                 });
             }
 
-            if (! this.config.is_disabled) {
+            if (!this.config.is_disabled) {
                 this.addLocationButton();
                 this.addSearchButton();
             }
@@ -105,8 +105,10 @@ export default function mapTilerPicker({ config }) {
             if (options.className) el.className = options.className;
             if (options.iconUrl) {
                 el.style.backgroundImage = `url('${options.iconUrl}')`;
-                el.style.width = (options.iconSize?.[0] || 25) + 'px';
-                el.style.height = (options.iconSize?.[1] || 41) + 'px';
+                const w = options.iconSize && options.iconSize[0] ? options.iconSize[0] : 25;
+                const h = options.iconSize && options.iconSize[1] ? options.iconSize[1] : 41;
+                el.style.width = w + 'px';
+                el.style.height = h + 'px';
                 el.style.backgroundSize = 'contain';
             }
             return el;
@@ -198,7 +200,7 @@ export default function mapTilerPicker({ config }) {
                     const label = document.createElement('label');
                     label.textContent = self.config.map_type_text;
                     const select = document.createElement('select');
-                    Object.keys(self.tileProviders).forEach(key => {
+                    Object.keys(self.tileProviders).forEach((key) => {
                         const option = document.createElement('option');
                         option.value = key;
                         option.textContent = self.formatProviderName(key);
@@ -222,7 +224,7 @@ export default function mapTilerPicker({ config }) {
             return name
                 .replace(/\./g, ' ')
                 .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, str => str.toUpperCase())
+                .replace(/^./, (str) => str.toUpperCase())
                 .trim();
         },
 
@@ -268,12 +270,20 @@ export default function mapTilerPicker({ config }) {
                         this.lng = latLng.lng;
                     },
                     (error) => {
-                        new FilamentNotification().title('Error').body('Could not get location. Please check console errors').danger().send();
+                        new FilamentNotification()
+                            .title('Error')
+                            .body('Could not get location. Please check console errors')
+                            .danger()
+                            .send();
                         console.error('Error getting location:', error);
                     }
                 );
             } else {
-                new FilamentNotification().title('No Browser Support').body('Your browser does not support location services').danger().send();
+                new FilamentNotification()
+                    .title('No Browser Support')
+                    .body('Your browser does not support location services')
+                    .danger()
+                    .send();
             }
         },
 
