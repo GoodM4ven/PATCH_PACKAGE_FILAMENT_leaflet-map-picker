@@ -77,10 +77,12 @@ export default function leafletMapPickerEntry({ location, config }) {
         initMap: function () {
             const coordinates = this.getCoordinates();
             
-            this.map = L.map(this.$refs.mapContainer).setView(
+            const map = L.map(this.$refs.mapContainer).setView(
                 [coordinates.lat, coordinates.lng],
                 this.config.defaultZoom
             );
+
+            this.map = window.Alpine ? window.Alpine.raw(map) : map;
 
             this.setTileLayer(this.config.tileProvider);
 
@@ -101,10 +103,11 @@ export default function leafletMapPickerEntry({ location, config }) {
                 })
             }
 
-            this.marker = L.marker(
+            const marker = L.marker(
                 [coordinates.lat, coordinates.lng],
                 markerOptions
             ).addTo(this.map);
+            this.marker = window.Alpine ? window.Alpine.raw(marker) : marker;
 
             if (this.config.showTileControl) {
                 this.addTileSelectorControl();
@@ -118,7 +121,8 @@ export default function leafletMapPickerEntry({ location, config }) {
 
             const provider = this.tileProviders[providerName] || this.tileProviders.openstreetmap;
 
-            this.tileLayer = L.tileLayer(provider.url, provider.options).addTo(this.map);
+            const layer = L.tileLayer(provider.url, provider.options).addTo(this.map);
+            this.tileLayer = window.Alpine ? window.Alpine.raw(layer) : layer;
         },
 
         addTileSelectorControl: function() {
