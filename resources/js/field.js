@@ -57,7 +57,8 @@ export default function mapTilerPicker({ config }) {
         },
 
         initMap() {
-            const coords = [this.getCoordinates().lng, this.getCoordinates().lat];
+            const initial = { ...this.getCoordinates() };
+            const coords = [initial.lng, initial.lat];
 
             this.map = new maptilersdk.Map({
                 container: this.$refs.mapContainer,
@@ -72,9 +73,9 @@ export default function mapTilerPicker({ config }) {
             }
             this.marker = new maptilersdk.Marker(markerOptions).setLngLat(coords).addTo(this.map);
 
-            this.lat = this.getCoordinates().lat;
-            this.lng = this.getCoordinates().lng;
-            this.setCoordinates(this.getCoordinates());
+            this.lat = initial.lat;
+            this.lng = initial.lng;
+            this.setCoordinates({ ...initial });
 
             if (this.config.clickable) {
                 this.map.on('click', (e) => {
@@ -301,7 +302,7 @@ export default function mapTilerPicker({ config }) {
         },
 
         setCoordinates(position) {
-            this.$wire.set(this.config.statePath, position);
+            this.$wire.set(this.config.statePath, { lat: position.lat, lng: position.lng });
         },
 
         getCoordinates() {
@@ -309,7 +310,7 @@ export default function mapTilerPicker({ config }) {
             if (!location || !location.lat || !location.lng) {
                 location = { lat: this.config.defaultLocation.lat, lng: this.config.defaultLocation.lng };
             }
-            return location;
+            return { lat: location.lat, lng: location.lng };
         },
     };
 }

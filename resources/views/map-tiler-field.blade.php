@@ -4,9 +4,9 @@
 >
     <div
         wire:ignore
-        ax-load
+        x-load
         x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'goodm4ven/filament-map-tiler'))]"
-        ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'goodm4ven/filament-map-tiler') }}"
+        x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'goodm4ven/filament-map-tiler') }}"
         wire:key="{{ $getStatePath() }}"
         x-data="mapTilerPicker({
             config: {{ $getMapConfig() }},
