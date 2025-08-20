@@ -1,6 +1,6 @@
 import * as maptilersdk from '@maptiler/sdk';
 
-export default function leafletMapPicker({ config }) {
+export default function mapTilerPicker({ config }) {
     return {
         map: null,
         marker: null,
@@ -44,6 +44,9 @@ export default function leafletMapPicker({ config }) {
 
         init() {
             this.config = { ...this.config, ...config };
+            if (!this.config.apiKey) {
+                throw new Error('MapTiler API key is required');
+            }
             maptilersdk.config.apiKey = this.config.apiKey;
 
             if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
@@ -190,7 +193,7 @@ export default function leafletMapPicker({ config }) {
                 onAdd(map) {
                     this.map = map;
                     this.container = document.createElement('div');
-                    this.container.className = 'leaflet-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
+                    this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
                     const label = document.createElement('label');
                     label.textContent = self.config.map_type_text;
                     const select = document.createElement('select');

@@ -10,9 +10,9 @@
     <div
         wire:ignore
         ax-load
-        x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('leaflet-map-picker', 'afsakar/filament-leaflet-map-picker'))]"
-        ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('leaflet-map-picker-entry', 'afsakar/filament-leaflet-map-picker') }}"
-        x-data="leafletMapEntry({
+        x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'GoodM4ven/PACKAGE_FILAMENT_map-tiler'))]"
+        ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-entry', 'GoodM4ven/PACKAGE_FILAMENT_map-tiler') }}"
+        x-data="mapTilerEntry({
             location: {{ json_encode($getState()) }},
             config: {
                 defaultZoom: {{ $getDefaultZoom() }},
@@ -31,7 +31,7 @@
         <div class="relative w-full mx-auto rounded-lg overflow-hidden shadow bg-gray-50 dark:bg-gray-700">
             <div
                 x-ref="mapContainer"
-                class="leaflet-map-picker w-full relative"
+                class="map-tiler-picker w-full relative"
                 style="height: {{ $getHeight() }}; z-index: 1;"
             ></div>
 
@@ -42,7 +42,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <p class="text-sm text-gray-700 dark:text-gray-200">
-                        {{ __('filament-leaflet-map-picker::leaflet-map-picker.selected_locations') }}
+                        {{ __('filament-map-tiler::map-tiler.selected_locations') }}
                         <span class="font-medium" x-text="location ? location.lat.toFixed(6) : ''"></span>,
                         <span class="font-medium" x-text="location ? location.lng.toFixed(6) : ''"></span>
                     </p>

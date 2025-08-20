@@ -1,10 +1,10 @@
 @import "@maptiler/sdk/dist/maptiler-sdk.css";
 
-.leaflet-map-picker {
+.map-tiler-picker {
     z-index: 10;
 }
 
-.leaflet-tile-selector {
+.map-tiler-tile-selector {
     background-color: white;
     border-radius: 4px;
     box-shadow: 0 1px 5px rgba(0,0,0,0.4);
@@ -12,7 +12,7 @@
     z-index: 15;
 }
 
-.leaflet-tile-selector select {
+.map-tiler-tile-selector select {
     min-width: 150px;
     padding: 6px 8px;
     border: 1px solid #ccc;
@@ -30,17 +30,17 @@
     cursor: pointer;
 }
 
-.leaflet-tile-selector select:focus {
+.map-tiler-tile-selector select:focus {
     outline: none;
     border-color: var(--primary-600);
     box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
 }
 
-.leaflet-tile-selector select:hover {
+.map-tiler-tile-selector select:hover {
     border-color: var(--gray-500);
 }
 
-.leaflet-tile-selector label {
+.map-tiler-tile-selector label {
     display: block;
     margin-bottom: 4px;
     font-size: 12px;

@@ -1,18 +1,19 @@
 <?php
 
-namespace Afsakar\LeafletMapPicker;
+namespace GoodMaven\FilamentMapTiler;
 
 use Closure;
 use Exception;
 use Filament\Forms\Components\Concerns\CanBeReadOnly;
 use Filament\Forms\Components\Field;
 use JsonException;
+use RuntimeException;
 
 class LeafletMapPicker extends Field
 {
     use CanBeReadOnly;
 
-    protected string $view = 'filament-leaflet-map-picker::leaflet-map-picker';
+    protected string $view = 'filament-map-tiler::map-tiler-picker';
 
     protected string | Closure $height = '400px';
 
@@ -63,6 +64,31 @@ class LeafletMapPicker extends Field
         'apiKey' => '',
         'showTaleControl' => false,
     ];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->afterStateHydrated(fn () => $this->ensureValidApiKey());
+    }
+
+    protected function ensureValidApiKey(): void
+    {
+        $apiKey = $this->evaluate($this->apiKey) ?: config('filament-map-tiler.api_key');
+
+        if (! $apiKey) {
+            throw new RuntimeException('MapTiler API key is missing.');
+        }
+
+        if (! app()->environment('testing')) {
+            $headers = @get_headers("https://api.maptiler.com/maps/streets/style.json?key={$apiKey}");
+            if (! $headers || strpos($headers[0], '200') === false) {
+                throw new RuntimeException('MapTiler API key is invalid or could not be verified.');
+            }
+        }
+
+        $this->apiKey = $apiKey;
+    }
 
     public function hideTileControl(): static
     {
@@ -229,7 +255,7 @@ class LeafletMapPicker extends Field
 
     public function getMarkerIconPath(): string
     {
-        return $this->evaluate($this->markerIconPath) ?: asset('vendor/leaflet-map-picker/images/marker-icon-2x.png');
+        return $this->evaluate($this->markerIconPath) ?: asset('vendor/filament-map-tiler/images/marker-icon-2x.png');
     }
 
     public function markerShadowPath(string | Closure $path): static
@@ -241,7 +267,7 @@ class LeafletMapPicker extends Field
 
     public function getMarkerShadowPath(): string
     {
-        return $this->evaluate($this->markerShadowPath) ?: asset('vendor/leaflet-map-picker/images/marker-shadow.png');
+        return $this->evaluate($this->markerShadowPath) ?: asset('vendor/filament-map-tiler/images/marker-shadow.png');
     }
 
     /**
@@ -263,7 +289,7 @@ class LeafletMapPicker extends Field
                 'customMarker' => $this->getCustomMarker(),
                 'markerIconPath' => $this->getMarkerIconPath(),
                 'markerShadowPath' => $this->getMarkerShadowPath(),
-                'map_type_text' => __('filament-leaflet-map-picker::leaflet-map-picker.map_type'),
+                'map_type_text' => __('filament-map-tiler::map-tiler.map_type'),
                 'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
                 'showTileControl' => $this->showTileControl,
                 'apiKey' => $this->getApiKey(),
@@ -281,7 +307,7 @@ class LeafletMapPicker extends Field
 
     public function getApiKey(): string
     {
-        return (string)$this->evaluate($this->apiKey);
+        return (string) $this->apiKey;
     }
 
     /**
