@@ -9,11 +9,11 @@ use Filament\Forms\Components\Field;
 use JsonException;
 use RuntimeException;
 
-class LeafletMapPicker extends Field
+class MapTilerField extends Field
 {
     use CanBeReadOnly;
 
-    protected string $view = 'filament-map-tiler::map-tiler-picker';
+    protected string $view = 'filament-map-tiler::map-tiler-field';
 
     protected string | Closure $height = '400px';
 

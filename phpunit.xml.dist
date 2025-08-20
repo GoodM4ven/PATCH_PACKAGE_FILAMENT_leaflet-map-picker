@@ -16,7 +16,7 @@
     backupStaticProperties="false"
 >
     <testsuites>
-        <testsuite name="GoodMaven Test Suite">
+        <testsuite name="Filament Map Tiler Test Suite">
             <directory>tests</directory>
         </testsuite>
     </testsuites>

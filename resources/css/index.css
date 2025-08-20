@@ -1,6 +1,6 @@
 @import "@maptiler/sdk/dist/maptiler-sdk.css";
 
-.map-tiler-picker {
+.map-tiler {
     z-index: 10;
 }
 

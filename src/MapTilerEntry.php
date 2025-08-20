@@ -7,7 +7,7 @@ use Filament\Infolists\Components\Entry as Component;
 use Filament\Support\Concerns\HasExtraAlpineAttributes;
 use RuntimeException;
 
-class LeafletMapPickerEntry extends Component
+class MapTilerEntry extends Component
 {
     use HasExtraAlpineAttributes;
 

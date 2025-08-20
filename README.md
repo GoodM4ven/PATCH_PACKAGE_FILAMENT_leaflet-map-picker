@@ -2,14 +2,7 @@
 
 A Filament Forms component that provides an interactive MapTiler map for selecting and storing geographical coordinates.
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/GoodM4ven/PACKAGE_FILAMENT_map-tiler.svg?style=flat-square)](https://packagist.org/packages/GoodM4ven/PACKAGE_FILAMENT_map-tiler)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/GoodM4ven/PACKAGE_FILAMENT_map-tiler/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/GoodM4ven/PACKAGE_FILAMENT_map-tiler/fix-php-code-styling.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/actions?query=workflow%3A"Fix+PHP+code+styling"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/GoodM4ven/PACKAGE_FILAMENT_map-tiler.svg?style=flat-square)](https://packagist.org/packages/GoodM4ven/PACKAGE_FILAMENT_map-tiler)
-
-![Banner](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/leaflet-js-banner.png "Banner")
-
-## Features
+## Todos
 
 - Interactive map for location selection
 - Customizable map height
@@ -21,14 +14,12 @@ A Filament Forms component that provides an interactive MapTiler map for selecti
 - Custom tile layer support
 - Custom marker configuration
 
-![Screenshot](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/sc-default.png "Default")
-
 ## Installation
 
 You can install the package via composer:
 
 ```bash
-composer require GoodM4ven/PACKAGE_FILAMENT_map-tiler
+composer require goodm4ven/filament-map-tiler
 
 php artisan vendor:publish --tag="filament-map-tiler-assets"
 ```
@@ -38,13 +29,12 @@ php artisan vendor:publish --tag="filament-map-tiler-assets"
 Create a column in your table to store the location data. You can use a `text` or `json` column type:
 
 ```php
-Schema::create('properties', function (Blueprint $table) {
-    $table->id();
-    // Other columns
+Schema::create('somethings', function (Blueprint $table) {
+    // ...
     $table->text('location')->nullable(); // Stores coordinates as JSON string
     // OR
-    $table->json('location')->nullable(); // Alternative approach
-    $table->timestamps();
+    $table->json('location')->nullable();
+    // ...
 });
 ```
 
@@ -57,27 +47,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Property extends Model
+class Something extends Model
 {
     protected $fillable = [
-        // Other fillable fields
+        // ...
         'location',
     ];
 
     protected $casts = [
+        // ...
         'location' => 'array',
     ];
 }
 ```
 
 You can publish the lang files with:
-
 ```bash
 php artisan vendor:publish --tag="filament-map-tiler-translations"
 ```
 
-Optionally, you can publish the views using
-
+Optionally, you can also publish the views using:
 ```bash
 php artisan vendor:publish --tag="filament-map-tiler-views"
 ```
@@ -86,14 +75,14 @@ php artisan vendor:publish --tag="filament-map-tiler-views"
 
 ### Form
 ```php
-use GoodMaven\FilamentMapTiler\LeafletMapPicker;
+use GoodMaven\FilamentMapTiler\MapTiler;
 
 // Basic usage
-LeafletMapPicker::make('location')
+MapTiler::make('location')
     ->label('Select Location')
 
 // Advanced usage with customization
-LeafletMapPicker::make('location')
+MapTiler::make('location')
     ->label('Property Location')
     ->height('500px')
     ->defaultLocation([41.0082, 28.9784]) // Istanbul coordinates
@@ -116,14 +105,14 @@ LeafletMapPicker::make('location')
 ### Infolist
 
 ```php
-use GoodMaven\FilamentMapTiler\LeafletMapPickerEntry;
+use GoodMaven\FilamentMapTiler\MapTilerEntry;
 
 // Basic usage
-LeafletMapPickerEntry::make('location')
+MapTilerEntry::make('location')
     ->label('Location')
 
 // Advanced usage with customization
-LeafletMapPickerEntry::make('location')
+MapTilerEntry::make('location')
     ->label('Property Location')
     ->height('500px')
     ->defaultLocation([41.0082, 28.9784])
@@ -140,14 +129,7 @@ LeafletMapPickerEntry::make('location')
 
 ## Screenshots
 
-Default:
-![Screenshot](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/sc-default.png "Default")
-
-Custom Marker:
-![Screenshot](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/sc-custom-marker.png "Custom Marker")
-
-Custom Tile:
-![Screenshot](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/sc-custom-tile.png "Custom Tile")
+...
 
 ## Testing
 
@@ -169,6 +151,7 @@ Please review [our security policy](../../security/policy) on how to report secu
 
 ## Credits
 
+- [GoodM4ven](https://github.com/GoodM4ven)
 - [Azad Furkan ŞAKAR](https://github.com/afsakar)
 - [All Contributors](../../contributors)
 

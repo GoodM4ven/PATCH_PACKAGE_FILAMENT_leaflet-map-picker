@@ -17,7 +17,7 @@
         <div class="relative w-full mx-auto rounded-lg overflow-hidden shadow bg-gray-50 dark:bg-gray-700">
             <div
                 x-ref="mapContainer"
-                class="map-tiler-picker w-full relative"
+                class="map-tiler w-full relative"
                 style="height: {{ $getHeight() }}; z-index: 1;"
             ></div>
 
