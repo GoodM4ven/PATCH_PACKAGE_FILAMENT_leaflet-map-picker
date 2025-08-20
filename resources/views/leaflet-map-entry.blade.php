@@ -22,7 +22,8 @@
                 customMarker: {{ $getCustomMarker() ? json_encode($getCustomMarker()) : 'null' }},
                 customTiles: {{ json_encode($getCustomTiles()) }},
                 markerIconPath: '{{ $getMarkerIconPath() }}',
-                markerShadowPath: '{{ $getMarkerShadowPath() }}'
+                markerShadowPath: '{{ $getMarkerShadowPath() }}',
+                apiKey: '{{ $getApiKey() }}'
             }
         })"
         x-ignore

@@ -1,71 +1,42 @@
-import * as L from 'leaflet';
+import * as maptilersdk from '@maptiler/sdk';
 
 export default function leafletMapPickerEntry({ location, config }) {
     return {
         map: null,
         marker: null,
         location: null,
-        tileLayer: null,
         config: {
             defaultZoom: 13,
             defaultLocation: {
                 lat: 41.0082,
                 lng: 28.9784,
             },
-            tileProvider: 'openstreetmap',
+            tileProvider: 'STREETS',
             customTiles: [],
             customMarker: null,
             showTileControl: true,
             markerIconPath: '',
             markerShadowPath: '',
+            apiKey: '',
         },
 
         tileProviders: {
-            openstreetmap: {
-                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                options: {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }
-            },
-            google: {
-                url: 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-                options: {
-                    attribution: '&copy; Google Maps',
-                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                }
-            },
-            googleSatellite: {
-                url: 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-                options: {
-                    attribution: '&copy; Google Maps',
-                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                }
-            },
-            googleTerrain: {
-                url: 'http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
-                options: {
-                    attribution: '&copy; Google Maps',
-                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                }
-            },
-            googleHybrid: {
-                url: 'http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
-                options: {
-                    attribution: '&copy; Google Maps',
-                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                }
-            },
-            esri: {
-                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                options: {
-                    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>'
-                }
-            }
+            STREETS: maptilersdk.MapStyle.STREETS,
+            'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
+            'STREETS.LIGHT': maptilersdk.MapStyle.STREETS.LIGHT,
+            OUTDOOR: maptilersdk.MapStyle.OUTDOOR,
+            WINTER: maptilersdk.MapStyle.WINTER,
+            SATELLITE: maptilersdk.MapStyle.SATELLITE,
+            HYBRID: maptilersdk.MapStyle.HYBRID,
+            DATAVIZ: maptilersdk.MapStyle.DATAVIZ,
+            'DATAVIZ.DARK': maptilersdk.MapStyle.DATAVIZ.DARK,
+            'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
         },
 
-        init: function () {
+        init() {
             this.location = location;
             this.config = { ...this.config, ...config };
+            maptilersdk.config.apiKey = this.config.apiKey;
 
             if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
                 this.tileProviders = { ...this.tileProviders, ...this.config.customTiles };
@@ -74,97 +45,82 @@ export default function leafletMapPickerEntry({ location, config }) {
             this.initMap();
         },
 
-        initMap: function () {
-            const coordinates = this.getCoordinates();
-            
-            this.map = L.map(this.$refs.mapContainer).setView(
-                [coordinates.lat, coordinates.lng],
-                this.config.defaultZoom
-            );
+        initMap() {
+            const coords = [this.getCoordinates().lng, this.getCoordinates().lat];
 
-            this.setTileLayer(this.config.tileProvider);
+            this.map = new maptilersdk.Map({
+                container: this.$refs.mapContainer,
+                style: this.tileProviders[this.config.tileProvider] || maptilersdk.MapStyle.STREETS,
+                center: coords,
+                zoom: this.config.defaultZoom,
+                interactive: false,
+            });
 
-            let markerOptions = { draggable: false };
-
+            const markerOptions = {};
             if (this.config.customMarker) {
-                const icon = L.icon(this.config.customMarker);
-                markerOptions.icon = icon;
-            } else {
-                markerOptions.icon = L.icon({
-                    iconUrl: this.config.markerIconPath,
-                    shadowUrl: this.config.markerShadowPath,
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    tooltipAnchor: [16, -28],
-                    shadowSize: [41, 41],
-                })
+                markerOptions.element = this.createMarkerElement(this.config.customMarker);
             }
-
-            this.marker = L.marker(
-                [coordinates.lat, coordinates.lng],
-                markerOptions
-            ).addTo(this.map);
+            this.marker = new maptilersdk.Marker(markerOptions).setLngLat(coords).addTo(this.map);
 
             if (this.config.showTileControl) {
                 this.addTileSelectorControl();
             }
         },
 
-        setTileLayer: function(providerName) {
-            if (this.tileLayer) {
-                this.map.removeLayer(this.tileLayer);
+        createMarkerElement(options) {
+            const el = document.createElement('div');
+            if (options.className) el.className = options.className;
+            if (options.iconUrl) {
+                el.style.backgroundImage = `url('${options.iconUrl}')`;
+                el.style.width = (options.iconSize?.[0] || 25) + 'px';
+                el.style.height = (options.iconSize?.[1] || 41) + 'px';
+                el.style.backgroundSize = 'contain';
             }
-
-            const provider = this.tileProviders[providerName] || this.tileProviders.openstreetmap;
-
-            this.tileLayer = L.tileLayer(provider.url, provider.options).addTo(this.map);
+            return el;
         },
 
-        addTileSelectorControl: function() {
-            const tileControl = L.Control.extend({
-                options: {
-                    position: 'topright'
-                },
-                onAdd: (map) => {
-                    const container = L.DomUtil.create('div', 'leaflet-tile-selector leaflet-bar leaflet-control');
+        setStyle(styleName) {
+            const style = this.tileProviders[styleName] || maptilersdk.MapStyle.STREETS;
+            this.map.setStyle(style);
+        },
 
-                    const select = L.DomUtil.create('select', '', container);
-
-                    Object.keys(this.tileProviders).forEach(key => {
-                        const option = L.DomUtil.create('option', '', select);
+        addTileSelectorControl() {
+            const self = this;
+            class TileControl {
+                onAdd(map) {
+                    this.map = map;
+                    this.container = document.createElement('div');
+                    this.container.className = 'leaflet-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
+                    const select = document.createElement('select');
+                    Object.keys(self.tileProviders).forEach(key => {
+                        const option = document.createElement('option');
                         option.value = key;
-                        option.textContent = this.formatProviderName(key);
-
-                        if (key === this.config.tileProvider) {
-                            option.selected = true;
-                        }
+                        option.textContent = self.formatProviderName(key);
+                        if (key === self.config.tileProvider) option.selected = true;
+                        select.appendChild(option);
                     });
-
-                    L.DomEvent.disableClickPropagation(container);
-                    L.DomEvent.disableScrollPropagation(container);
-
-                    L.DomEvent.on(select, 'change', (e) => {
-                        this.setTileLayer(e.target.value);
-                    });
-
-                    return container;
+                    select.onchange = e => self.setStyle(e.target.value);
+                    this.container.appendChild(select);
+                    return this.container;
                 }
-            });
-
-            this.map.addControl(new tileControl());
+                onRemove() {
+                    this.container.parentNode.removeChild(this.container);
+                    this.map = undefined;
+                }
+            }
+            this.map.addControl(new TileControl(), 'top-right');
         },
 
-        formatProviderName: function(name) {
+        formatProviderName(name) {
             return name
+                .replace(/\./g, ' ')
                 .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, function(str) { return str.toUpperCase(); })
+                .replace(/^./, str => str.toUpperCase())
                 .trim();
         },
 
-        getCoordinates: function () {
+        getCoordinates() {
             let locationObj = this.location;
-            
             if (typeof locationObj === 'string') {
                 try {
                     locationObj = JSON.parse(locationObj);
@@ -173,11 +129,7 @@ export default function leafletMapPickerEntry({ location, config }) {
                 }
             }
 
-            if (
-                locationObj === null ||
-                !locationObj.hasOwnProperty('lat') ||
-                !locationObj.hasOwnProperty('lng')
-            ) {
+            if (!locationObj || !locationObj.lat || !locationObj.lng) {
                 locationObj = {
                     lat: this.config.defaultLocation.lat,
                     lng: this.config.defaultLocation.lng,
@@ -185,6 +137,6 @@ export default function leafletMapPickerEntry({ location, config }) {
             }
 
             return locationObj;
-        }
+        },
     };
 }

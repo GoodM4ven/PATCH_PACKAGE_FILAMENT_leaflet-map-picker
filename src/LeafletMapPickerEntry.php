@@ -21,7 +21,9 @@ class LeafletMapPickerEntry extends Component
         'lng' => 28.9784,
     ];
 
-    protected string $tileProvider = 'openstreetmap';
+    protected string $tileProvider = 'STREETS';
+
+    protected string $apiKey = '';
 
     protected bool $showTileControl = true;
 
@@ -127,6 +129,18 @@ class LeafletMapPickerEntry extends Component
     public function getMarkerShadowPath(): string
     {
         return $this->evaluate($this->markerShadowPath) ?: asset('vendor/leaflet-map-picker/images/marker-shadow.png');
+    }
+
+    public function apiKey(string $apiKey): static
+    {
+        $this->apiKey = $apiKey;
+
+        return $this;
+    }
+
+    public function getApiKey(): string
+    {
+        return $this->apiKey;
     }
 
     public function height(string | Closure $height): static

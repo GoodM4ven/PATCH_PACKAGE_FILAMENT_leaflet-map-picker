@@ -103,18 +103,8 @@ LeafletMapPicker::make('location')
     ->myLocationButtonLabel('Go to My Location')
     ->hideTileControl()
     ->readOnly() // default false, when you set this to true, the marker will not be draggable or clickable and current location and search location buttons will be hidden
-    ->tileProvider('openstreetmap') // default options: openstreetmap, google, googleSatellite, googleTerrain, googleHybrid, esri
-    ->customTiles([
-        'mapbox' => [
-            'url' => 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
-            'options' => [
-                'attribution' => '&copy; <a href="https://www.mapbox.com/">Mapbox</a>',
-                'id' => 'mapbox/streets-v11',
-                'maxZoom' => 19,
-                'accessToken' => 'YOUR_MAPBOX_TOKEN',
-            ]
-        ]
-    ])
+    ->apiKey('YOUR_MAPTILER_API_KEY')
+    ->tileProvider('STREETS') // built-in options: STREETS, OUTDOOR, WINTER, SATELLITE, HYBRID, etc.
     ->customMarker([
         'iconUrl' => asset('pin-2.png'),
         'iconSize' => [38, 38],
@@ -137,19 +127,9 @@ LeafletMapPickerEntry::make('location')
     ->label('Property Location')
     ->height('500px')
     ->defaultLocation([41.0082, 28.9784])
-    ->tileProvider('openstreetmap') // default options: openstreetmap, google, googleSatellite, googleTerrain, googleHybrid, esri
+    ->apiKey('YOUR_MAPTILER_API_KEY')
+    ->tileProvider('STREETS') // built-in options: STREETS, OUTDOOR, WINTER, SATELLITE, HYBRID, etc.
     ->hideTileControl()
-    ->customTiles([
-        'mapbox' => [
-            'url' => 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
-            'options' => [
-                'attribution' => '&copy; <a href="https://www.mapbox.com/">Mapbox</a>',
-                'id' => 'mapbox/streets-v11',
-                'maxZoom' => 19,
-                'accessToken' => 'YOUR_MAPBOX_TOKEN',
-            ]
-        ]
-    ])
     ->customMarker([
         'iconUrl' => asset('pin-2.png'),
         'iconSize' => [38, 38],

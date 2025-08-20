@@ -28,7 +28,9 @@ class LeafletMapPicker extends Field
 
     protected string | Closure | null $searchLocationButtonLabel = 'Search Location';
 
-    protected string | Closure $tileProvider = 'openstreetmap';
+    protected string | Closure $tileProvider = 'STREETS';
+
+    protected string | Closure $apiKey = '';
 
     protected array | Closure $customTiles = [];
 
@@ -53,11 +55,12 @@ class LeafletMapPicker extends Field
         'defaultZoom' => 13,
         'myLocationButtonLabel' => '',
         'searchLocationButtonLabel' => '',
-        'tileProvider' => 'openstreetmap',
+        'tileProvider' => 'STREETS',
         'customTiles' => [],
         'customMarker' => null,
         'markerIconPath' => '',
         'markerShadowPath' => '',
+        'apiKey' => '',
         'showTaleControl' => false,
     ];
 
@@ -263,9 +266,22 @@ class LeafletMapPicker extends Field
                 'map_type_text' => __('filament-leaflet-map-picker::leaflet-map-picker.map_type'),
                 'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
                 'showTileControl' => $this->showTileControl,
+                'apiKey' => $this->getApiKey(),
             ]),
             JSON_THROW_ON_ERROR
         );
+    }
+
+    public function apiKey(string | Closure $apiKey): static
+    {
+        $this->apiKey = $apiKey;
+
+        return $this;
+    }
+
+    public function getApiKey(): string
+    {
+        return $this->evaluate($this->apiKey);
     }
 
     /**
