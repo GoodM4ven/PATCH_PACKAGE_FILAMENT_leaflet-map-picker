@@ -89,10 +89,12 @@ export default function leafletMapPicker({ location, config }) {
         },
 
         initMap: function () {
-            this.map = L.map(this.$refs.mapContainer).setView(
+            const map = L.map(this.$refs.mapContainer).setView(
                 [this.getCoordinates().lat, this.getCoordinates().lng],
                 this.config.defaultZoom
             );
+
+            this.map = window.Alpine ? window.Alpine.raw(map) : map;
 
             this.setTileLayer(this.config.tileProvider);
 
@@ -113,10 +115,11 @@ export default function leafletMapPicker({ location, config }) {
                 })
             }
 
-            this.marker = L.marker(
+            const marker = L.marker(
                 [this.getCoordinates().lat, this.getCoordinates().lng],
                 markerOptions
             ).addTo(this.map);
+            this.marker = window.Alpine ? window.Alpine.raw(marker) : marker;
 
             this.lat = this.getCoordinates().lat;
             this.lng = this.getCoordinates().lng;
@@ -238,7 +241,8 @@ export default function leafletMapPicker({ location, config }) {
             if (this.marker) {
                 this.marker.setLatLng([lat, lng]);
             } else {
-                this.marker = L.marker([lat, lng]).addTo(this.map);
+                const newMarker = L.marker([lat, lng]).addTo(this.map);
+                this.marker = window.Alpine ? window.Alpine.raw(newMarker) : newMarker;
             }
 
             this.lat = lat;
@@ -257,7 +261,8 @@ export default function leafletMapPicker({ location, config }) {
 
             const provider = this.tileProviders[providerName] || this.tileProviders.openstreetmap;
 
-            this.tileLayer = L.tileLayer(provider.url, provider.options).addTo(this.map);
+            const layer = L.tileLayer(provider.url, provider.options).addTo(this.map);
+            this.tileLayer = window.Alpine ? window.Alpine.raw(layer) : layer;
         },
 
         addTileSelectorControl: function() {
