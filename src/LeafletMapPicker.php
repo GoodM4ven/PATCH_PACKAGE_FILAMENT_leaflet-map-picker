@@ -169,7 +169,7 @@ class LeafletMapPicker extends Field
 
     public function getHeight(): string
     {
-        return $this->evaluate($this->height);
+        return (string)$this->evaluate($this->height);
     }
 
     public function myLocationButtonLabel(string | Closure $myLocationButtonLabel): static
@@ -181,7 +181,7 @@ class LeafletMapPicker extends Field
 
     public function getMyLocationButtonLabel(): string
     {
-        return $this->evaluate($this->myLocationButtonLabel);
+        return (string)$this->evaluate($this->myLocationButtonLabel);
     }
     
     public function searchLocationButtonLabel(string | Closure $searchLocationButtonLabel): static
@@ -193,7 +193,7 @@ class LeafletMapPicker extends Field
     
     public function getSearchLocationButtonLabel(): string
     {
-        return $this->evaluate($this->searchLocationButtonLabel);
+        return (string)$this->evaluate($this->searchLocationButtonLabel);
     }
 
     public function tileProvider(string | Closure $tileProvider): static
@@ -205,7 +205,7 @@ class LeafletMapPicker extends Field
 
     public function getTileProvider(): string
     {
-        return $this->evaluate($this->tileProvider);
+        return (string)$this->evaluate($this->tileProvider);
     }
 
     public function customTiles(array | Closure $customTiles): static
@@ -217,7 +217,7 @@ class LeafletMapPicker extends Field
 
     public function getCustomTiles(): array
     {
-        return $this->evaluate($this->customTiles);
+        return (array)$this->evaluate($this->customTiles);
     }
 
     public function markerIconPath(string | Closure $path): static
@@ -281,7 +281,7 @@ class LeafletMapPicker extends Field
 
     public function getApiKey(): string
     {
-        return $this->evaluate($this->apiKey);
+        return (string)$this->evaluate($this->apiKey);
     }
 
     /**

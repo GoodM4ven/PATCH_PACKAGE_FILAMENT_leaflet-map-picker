@@ -152,6 +152,6 @@ class LeafletMapPickerEntry extends Component
 
     public function getHeight(): string
     {
-        return $this->evaluate($this->height);
+        return (string)$this->evaluate($this->height);
     }
 }
