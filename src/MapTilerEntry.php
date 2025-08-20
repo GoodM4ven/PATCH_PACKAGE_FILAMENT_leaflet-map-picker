@@ -47,7 +47,7 @@ class MapTilerEntry extends Component
     {
         $apiKey = $this->apiKey ?: config('filament-map-tiler.api_key');
 
-        if (! $apiKey) {
+        if (empty($apiKey)) {
             throw new RuntimeException('MapTiler API key is missing.');
         }
 

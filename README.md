@@ -75,14 +75,14 @@ php artisan vendor:publish --tag="filament-map-tiler-views"
 
 ### Form
 ```php
-use GoodMaven\FilamentMapTiler\MapTiler;
+use GoodMaven\FilamentMapTiler\MapTilerField;
 
 // Basic usage
-MapTiler::make('location')
+MapTilerField::make('location')
     ->label('Select Location')
 
 // Advanced usage with customization
-MapTiler::make('location')
+MapTilerField::make('location')
     ->label('Property Location')
     ->height('500px')
     ->defaultLocation([41.0082, 28.9784]) // Istanbul coordinates
@@ -127,27 +127,11 @@ MapTilerEntry::make('location')
     ])
 ```
 
-## Screenshots
-
-...
-
 ## Testing
 
 ```bash
 composer test
 ```
-
-## Changelog
-
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-
-## Contributing
-
-Please see [CONTRIBUTING](.github/CONTRIBUTING.md) for details.
-
-## Security Vulnerabilities
-
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
 
 ## Credits
 
