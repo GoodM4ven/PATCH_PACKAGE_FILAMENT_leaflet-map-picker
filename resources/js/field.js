@@ -1,14 +1,15 @@
+// in map-tiler-field.js
 import * as maptilersdk from '@maptiler/sdk';
-// [ignore] ensure your bundler transpiles optional-chaining or avoid it
 
 export default function mapTilerPicker({ config }) {
-    // keep heavy/circular refs OUT of Alpine state
     let map = null;
     let marker = null;
     let tileProviders = null;
 
+    // --- helper to access a global store for modal state
+    const S = () => Alpine.store('mt');
+
     return {
-        // LIGHTWEIGHT, serializable state only
         lat: null,
         lng: null,
         config: {
@@ -22,10 +23,7 @@ export default function mapTilerPicker({ config }) {
             tileProvider: 'STREETS',
             customTiles: [],
             customMarker: null,
-            searchQuery: '',
-            localSearchResults: [],
-            isSearching: false,
-            searchTimeout: null,
+            // NOTE: search vars now live in the Alpine store, not here
             is_disabled: false,
             showTileControl: true,
             apiKey: '',
@@ -33,13 +31,20 @@ export default function mapTilerPicker({ config }) {
         },
 
         init() {
-            // merge server config
-            this.config = { ...this.config, ...config };
+            // ensure global store for teleported modal
+            if (!Alpine.store('mt')) {
+                Alpine.store('mt', {
+                    searchQuery: '',
+                    localSearchResults: [],
+                    isSearching: false,
+                    searchTimeout: null,
+                });
+            }
 
+            this.config = { ...this.config, ...config };
             if (!this.config.apiKey) throw new Error('MapTiler API key is required');
             maptilersdk.config.apiKey = this.config.apiKey;
 
-            // build tile providers LOCALLY (not on `this`)
             tileProviders = {
                 STREETS: maptilersdk.MapStyle.STREETS,
                 'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
@@ -52,8 +57,6 @@ export default function mapTilerPicker({ config }) {
                 'DATAVIZ.DARK': maptilersdk.MapStyle.DATAVIZ.DARK,
                 'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
             };
-
-            // merge any custom tiles
             if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
                 tileProviders = { ...tileProviders, ...this.config.customTiles };
             }
@@ -72,99 +75,53 @@ export default function mapTilerPicker({ config }) {
                 zoom: this.config.defaultZoom,
             });
 
-            const markerOptions = { draggable: this.config.draggable };
-            if (this.config.customMarker) markerOptions.element = this.createMarkerElement(this.config.customMarker);
+            // avoid empty sprite warning noise (harmless, but noisy)
+            map.on('styleimagemissing', (e) => {
+                if (!e.id || !e.id.trim()) return;
+                // you could map.addImage(e.id, ...) here when needed.
+            });
 
-            marker = new maptilersdk.Marker(markerOptions).setLngLat(center).addTo(map);
+            const opts = { draggable: this.config.draggable };
+            if (this.config.customMarker) opts.element = this.createMarkerElement(this.config.customMarker);
+            marker = new maptilersdk.Marker(opts).setLngLat(center).addTo(map);
 
             this.lat = initial.lat;
             this.lng = initial.lng;
             this.setCoordinates(initial);
 
-            if (this.config.clickable) {
-                map.on('click', (e) => this.markerMoved({ latLng: e.lngLat }));
-            }
-
-            if (this.config.draggable) {
-                marker.on('dragend', () => {
-                    const pos = marker.getLngLat();
-                    this.markerMoved({ latLng: pos });
-                });
-            }
+            if (this.config.clickable) map.on('click', (e) => this.markerMoved({ latLng: e.lngLat }));
+            if (this.config.draggable) marker.on('dragend', () => this.markerMoved({ latLng: marker.getLngLat() }));
 
             if (!this.config.is_disabled) {
                 this.addLocationButton();
                 this.addSearchButton();
             }
-
-            if (this.config.showTileControl) {
-                this.addTileSelectorControl();
-            }
+            if (this.config.showTileControl) this.addTileSelectorControl();
         },
 
-        createMarkerElement(options) {
-            const el = document.createElement('div');
-            if (options.className) el.className = options.className;
-            if (options.iconUrl) {
-                el.style.backgroundImage = `url('${options.iconUrl}')`;
-                const w = options.iconSize && options.iconSize[0] ? options.iconSize[0] : 25;
-                const h = options.iconSize && options.iconSize[1] ? options.iconSize[1] : 41;
-                el.style.width = w + 'px';
-                el.style.height = h + 'px';
-                el.style.backgroundSize = 'contain';
-            }
-            return el;
-        },
-
-        addSearchButton() {
-            const self = this;
-            class SearchControl {
-                onAdd(mp) {
-                    this.map = mp;
-                    this.container = document.createElement('div');
-                    this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>`;
-                    btn.title = self.config.searchLocationButtonLabel || 'Search Location';
-                    btn.onclick = () => self.$dispatch('open-modal', { id: 'location-search-modal' });
-                    this.container.appendChild(btn);
-                    return this.container;
-                }
-                onRemove() {
-                    this.container?.parentNode?.removeChild(this.container);
-                    this.map = undefined;
-                }
-            }
-            map.addControl(new SearchControl(), 'top-left');
-        },
-
+        // --- search helpers now use the store
         debounceSearch() {
-            if (this.searchTimeout) clearTimeout(this.searchTimeout);
-            if (!this.searchQuery || this.searchQuery.length < 3) {
-                this.localSearchResults = [];
-                this.isSearching = false;
+            const st = S();
+            if (st.searchTimeout) clearTimeout(st.searchTimeout);
+            if (!st.searchQuery || st.searchQuery.length < 3) {
+                st.localSearchResults = [];
+                st.isSearching = false;
                 return;
             }
-            this.isSearching = true;
-            this.searchTimeout = setTimeout(() => this.searchLocationFromModal(this.searchQuery), 500);
+            st.isSearching = true;
+            st.searchTimeout = setTimeout(() => this.searchLocationFromModal(st.searchQuery), 500);
         },
 
         async searchLocationFromModal(query) {
-            if (!query || query.length < 3) {
-                this.isSearching = false;
-                return;
-            }
+            const st = S();
+            if (!query || query.length < 3) { st.isSearching = false; return; }
             try {
                 const results = await maptilersdk.geocoding.forward(query);
-                this.localSearchResults = results.features;
+                st.localSearchResults = results.features;
             } catch (e) {
                 console.error('Search error:', e);
             } finally {
-                this.isSearching = false;
+                st.isSearching = false;
             }
         },
 
@@ -175,8 +132,10 @@ export default function mapTilerPicker({ config }) {
             marker.setLngLat([lng, lat]);
             this.lat = lat;
             this.lng = lng;
-            this.localSearchResults = [];
-            this.searchQuery = '';
+
+            const st = S();
+            st.localSearchResults = [];
+            st.searchQuery = '';
             this.$dispatch('close-modal', { id: 'location-search-modal' });
         },
 
