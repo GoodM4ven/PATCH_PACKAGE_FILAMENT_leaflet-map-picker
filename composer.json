@@ -1,6 +1,6 @@
 {
     "name": "afsakar/filament-leaflet-map-picker",
-    "version": "1.0.1-dev",
+    "version": "1.0.2-dev",
     "description": "A Filament Forms component that provides an interactive Leaflet map for selecting and storing geographical coordinates.",
     "keywords": [
         "afsakar",
