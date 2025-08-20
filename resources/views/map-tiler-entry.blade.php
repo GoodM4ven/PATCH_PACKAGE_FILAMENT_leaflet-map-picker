@@ -10,8 +10,8 @@
     <div
         wire:ignore
         ax-load
-        x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'GoodM4ven/PACKAGE_FILAMENT_map-tiler'))]"
-        ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-entry', 'GoodM4ven/PACKAGE_FILAMENT_map-tiler') }}"
+        x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'goodm4ven/filament-map-tiler'))]"
+        ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-entry', 'goodm4ven/filament-map-tiler') }}"
         x-data="mapTilerEntry({
             location: {{ json_encode($getState()) }},
             config: {

@@ -10,10 +10,10 @@
         "filament",
         "map-tiler"
     ],
-    "homepage": "https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler",
+    "homepage": "https://github.com/GoodM4ven/filament-map-tiler",
     "support": {
-        "issues": "https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/issues",
-        "source": "https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler"
+        "issues": "https://github.com/GoodM4ven/filament-map-tiler/issues",
+        "source": "https://github.com/GoodM4ven/filament-map-tiler"
     },
     "license": "MIT",
     "authors": [
