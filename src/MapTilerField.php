@@ -13,7 +13,7 @@ class MapTilerField extends Field
 {
     use CanBeReadOnly;
 
-    protected string $view = 'filament-map-tiler::filament-map-tiler-field';
+    protected string $view = 'filament-map-tiler::map-tiler-field';
 
     protected string | Closure $height = '400px';
 
