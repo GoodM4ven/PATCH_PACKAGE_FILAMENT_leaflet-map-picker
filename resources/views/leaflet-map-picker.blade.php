@@ -9,11 +9,7 @@
         ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('leaflet-map-picker', 'afsakar/filament-leaflet-map-picker') }}"
         wire:key="{{ $getStatePath() }}"
         x-data="leafletMapPicker({
-            location: $wire.{{ $applyStateBindingModifiers("\$entangle('{$getStatePath()}')") }},
             config: {{ $getMapConfig() }},
-            @if($getCustomMarker())
-                customMarker: {{ json_encode($getCustomMarker()) }},
-            @endif
         })"
         x-on:livewire:update.window="updateMapFromAlpine()"
         x-ignore
