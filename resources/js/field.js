@@ -114,7 +114,10 @@ export default function mapTilerPicker({ config }) {
 
         async searchLocationFromModal(query) {
             const st = S();
-            if (!query || query.length < 3) { st.isSearching = false; return; }
+            if (!query || query.length < 3) {
+                st.isSearching = false;
+                return;
+            }
             try {
                 const results = await maptilersdk.geocoding.forward(query);
                 st.localSearchResults = results.features;
@@ -142,6 +145,35 @@ export default function mapTilerPicker({ config }) {
         setStyle(styleName) {
             const style = tileProviders[styleName] || maptilersdk.MapStyle.STREETS;
             map.setStyle(style);
+        },
+
+        addSearchButton() {
+            const self = this;
+            class SearchControl {
+                onAdd(mp) {
+                    this.map = mp;
+                    this.container = document.createElement('div');
+                    this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+                </svg>`;
+                    btn.title = self.config.searchLocationButtonLabel || 'Search Location';
+                    btn.onclick = () => {
+                        self.$dispatch('open-modal', { id: 'location-search-modal' });
+                    };
+                    this.container.appendChild(btn);
+                    return this.container;
+                }
+                onRemove() {
+                    this.container?.parentNode?.removeChild(this.container);
+                    this.map = undefined;
+                }
+            }
+            map.addControl(new SearchControl(), 'top-left');
         },
 
         addTileSelectorControl() {
