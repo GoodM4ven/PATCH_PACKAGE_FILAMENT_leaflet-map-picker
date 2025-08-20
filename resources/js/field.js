@@ -1,19 +1,21 @@
 import * as maptilersdk from '@maptiler/sdk';
+// [ignore] ensure your bundler transpiles optional-chaining or avoid it
 
 export default function mapTilerPicker({ config }) {
+    // keep heavy/circular refs OUT of Alpine state
+    let map = null;
+    let marker = null;
+    let tileProviders = null;
+
     return {
-        map: null,
-        marker: null,
+        // LIGHTWEIGHT, serializable state only
         lat: null,
         lng: null,
         config: {
             draggable: true,
             clickable: true,
             defaultZoom: 13,
-            defaultLocation: {
-                lat: 41.0082,
-                lng: 28.9784,
-            },
+            defaultLocation: { lat: 41.0082, lng: 28.9784 },
             myLocationButtonLabel: '',
             searchLocationButtonLabel: '',
             statePath: '',
@@ -27,30 +29,33 @@ export default function mapTilerPicker({ config }) {
             is_disabled: false,
             showTileControl: true,
             apiKey: '',
-        },
-
-        tileProviders: {
-            STREETS: maptilersdk.MapStyle.STREETS,
-            'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
-            'STREETS.LIGHT': maptilersdk.MapStyle.STREETS.LIGHT,
-            OUTDOOR: maptilersdk.MapStyle.OUTDOOR,
-            WINTER: maptilersdk.MapStyle.WINTER,
-            SATELLITE: maptilersdk.MapStyle.SATELLITE,
-            HYBRID: maptilersdk.MapStyle.HYBRID,
-            DATAVIZ: maptilersdk.MapStyle.DATAVIZ,
-            'DATAVIZ.DARK': maptilersdk.MapStyle.DATAVIZ.DARK,
-            'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
+            map_type_text: 'Map Type',
         },
 
         init() {
+            // merge server config
             this.config = { ...this.config, ...config };
-            if (!this.config.apiKey) {
-                throw new Error('MapTiler API key is required');
-            }
+
+            if (!this.config.apiKey) throw new Error('MapTiler API key is required');
             maptilersdk.config.apiKey = this.config.apiKey;
 
+            // build tile providers LOCALLY (not on `this`)
+            tileProviders = {
+                STREETS: maptilersdk.MapStyle.STREETS,
+                'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
+                'STREETS.LIGHT': maptilersdk.MapStyle.STREETS.LIGHT,
+                OUTDOOR: maptilersdk.MapStyle.OUTDOOR,
+                WINTER: maptilersdk.MapStyle.WINTER,
+                SATELLITE: maptilersdk.MapStyle.SATELLITE,
+                HYBRID: maptilersdk.MapStyle.HYBRID,
+                DATAVIZ: maptilersdk.MapStyle.DATAVIZ,
+                'DATAVIZ.DARK': maptilersdk.MapStyle.DATAVIZ.DARK,
+                'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
+            };
+
+            // merge any custom tiles
             if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
-                this.tileProviders = { ...this.tileProviders, ...this.config.customTiles };
+                tileProviders = { ...tileProviders, ...this.config.customTiles };
             }
 
             this.initMap();
@@ -58,34 +63,31 @@ export default function mapTilerPicker({ config }) {
 
         initMap() {
             const initial = { ...this.getCoordinates() };
-            const coords = [initial.lng, initial.lat];
+            const center = [initial.lng, initial.lat];
 
-            this.map = new maptilersdk.Map({
+            map = new maptilersdk.Map({
                 container: this.$refs.mapContainer,
-                style: this.tileProviders[this.config.tileProvider] || maptilersdk.MapStyle.STREETS,
-                center: coords,
+                style: tileProviders[this.config.tileProvider] || maptilersdk.MapStyle.STREETS,
+                center,
                 zoom: this.config.defaultZoom,
             });
 
             const markerOptions = { draggable: this.config.draggable };
-            if (this.config.customMarker) {
-                markerOptions.element = this.createMarkerElement(this.config.customMarker);
-            }
-            this.marker = new maptilersdk.Marker(markerOptions).setLngLat(coords).addTo(this.map);
+            if (this.config.customMarker) markerOptions.element = this.createMarkerElement(this.config.customMarker);
+
+            marker = new maptilersdk.Marker(markerOptions).setLngLat(center).addTo(map);
 
             this.lat = initial.lat;
             this.lng = initial.lng;
-            this.setCoordinates({ ...initial });
+            this.setCoordinates(initial);
 
             if (this.config.clickable) {
-                this.map.on('click', (e) => {
-                    this.markerMoved({ latLng: e.lngLat });
-                });
+                map.on('click', (e) => this.markerMoved({ latLng: e.lngLat }));
             }
 
             if (this.config.draggable) {
-                this.marker.on('dragend', () => {
-                    const pos = this.marker.getLngLat();
+                marker.on('dragend', () => {
+                    const pos = marker.getLngLat();
                     this.markerMoved({ latLng: pos });
                 });
             }
@@ -117,8 +119,8 @@ export default function mapTilerPicker({ config }) {
         addSearchButton() {
             const self = this;
             class SearchControl {
-                onAdd(map) {
-                    this.map = map;
+                onAdd(mp) {
+                    this.map = mp;
                     this.container = document.createElement('div');
                     this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
                     const btn = document.createElement('button');
@@ -133,28 +135,22 @@ export default function mapTilerPicker({ config }) {
                     return this.container;
                 }
                 onRemove() {
-                    this.container.parentNode.removeChild(this.container);
+                    this.container?.parentNode?.removeChild(this.container);
                     this.map = undefined;
                 }
             }
-            this.map.addControl(new SearchControl(), 'top-left');
+            map.addControl(new SearchControl(), 'top-left');
         },
 
         debounceSearch() {
-            if (this.searchTimeout) {
-                clearTimeout(this.searchTimeout);
-            }
-
+            if (this.searchTimeout) clearTimeout(this.searchTimeout);
             if (!this.searchQuery || this.searchQuery.length < 3) {
                 this.localSearchResults = [];
                 this.isSearching = false;
                 return;
             }
-
             this.isSearching = true;
-            this.searchTimeout = setTimeout(() => {
-                this.searchLocationFromModal(this.searchQuery);
-            }, 500);
+            this.searchTimeout = setTimeout(() => this.searchLocationFromModal(this.searchQuery), 500);
         },
 
         async searchLocationFromModal(query) {
@@ -162,12 +158,11 @@ export default function mapTilerPicker({ config }) {
                 this.isSearching = false;
                 return;
             }
-
             try {
                 const results = await maptilersdk.geocoding.forward(query);
                 this.localSearchResults = results.features;
-            } catch (error) {
-                console.error('Search error:', error);
+            } catch (e) {
+                console.error('Search error:', e);
             } finally {
                 this.isSearching = false;
             }
@@ -175,9 +170,9 @@ export default function mapTilerPicker({ config }) {
 
         selectLocationFromModal(result) {
             const [lng, lat] = result.center || result.geometry.coordinates;
-            this.map.setCenter([lng, lat]);
-            this.map.setZoom(15);
-            this.marker.setLngLat([lng, lat]);
+            map.setCenter([lng, lat]);
+            map.setZoom(15);
+            marker.setLngLat([lng, lat]);
             this.lat = lat;
             this.lng = lng;
             this.localSearchResults = [];
@@ -186,21 +181,21 @@ export default function mapTilerPicker({ config }) {
         },
 
         setStyle(styleName) {
-            const style = this.tileProviders[styleName] || maptilersdk.MapStyle.STREETS;
-            this.map.setStyle(style);
+            const style = tileProviders[styleName] || maptilersdk.MapStyle.STREETS;
+            map.setStyle(style);
         },
 
         addTileSelectorControl() {
             const self = this;
             class TileControl {
-                onAdd(map) {
-                    this.map = map;
+                onAdd(mp) {
+                    this.map = mp;
                     this.container = document.createElement('div');
                     this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
                     const label = document.createElement('label');
                     label.textContent = self.config.map_type_text;
                     const select = document.createElement('select');
-                    Object.keys(self.tileProviders).forEach((key) => {
+                    Object.keys(tileProviders).forEach((key) => {
                         const option = document.createElement('option');
                         option.value = key;
                         option.textContent = self.formatProviderName(key);
@@ -213,26 +208,26 @@ export default function mapTilerPicker({ config }) {
                     return this.container;
                 }
                 onRemove() {
-                    this.container.parentNode.removeChild(this.container);
+                    this.container?.parentNode?.removeChild(this.container);
                     this.map = undefined;
                 }
             }
-            this.map.addControl(new TileControl(), 'top-right');
+            map.addControl(new TileControl(), 'top-right');
         },
 
         formatProviderName(name) {
             return name
                 .replace(/\./g, ' ')
                 .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, (str) => str.toUpperCase())
+                .replace(/^./, (s) => s.toUpperCase())
                 .trim();
         },
 
         addLocationButton() {
             const self = this;
             class LocationControl {
-                onAdd(map) {
-                    this.map = map;
+                onAdd(mp) {
+                    this.map = mp;
                     this.container = document.createElement('div');
                     this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
                     const btn = document.createElement('button');
@@ -242,49 +237,46 @@ export default function mapTilerPicker({ config }) {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>`;
-                    btn.title = self.config.myLocationButtonLabel;
+                    btn.title = self.config.myLocationButtonLabel || 'My Location';
                     btn.onclick = () => self.goToCurrentLocation();
                     this.container.appendChild(btn);
                     return this.container;
                 }
                 onRemove() {
-                    this.container.parentNode.removeChild(this.container);
+                    this.container?.parentNode?.removeChild(this.container);
                     this.map = undefined;
                 }
             }
-            this.map.addControl(new LocationControl(), 'top-left');
+            map.addControl(new LocationControl(), 'top-left');
         },
 
         goToCurrentLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const latLng = {
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude,
-                        };
-                        this.setCoordinates(latLng);
-                        this.marker.setLngLat([latLng.lng, latLng.lat]);
-                        this.map.easeTo({ center: [latLng.lng, latLng.lat], zoom: 15 });
-                        this.lat = latLng.lat;
-                        this.lng = latLng.lng;
-                    },
-                    (error) => {
-                        new FilamentNotification()
-                            .title('Error')
-                            .body('Could not get location. Please check console errors')
-                            .danger()
-                            .send();
-                        console.error('Error getting location:', error);
-                    }
-                );
-            } else {
+            if (!navigator.geolocation) {
                 new FilamentNotification()
                     .title('No Browser Support')
                     .body('Your browser does not support location services')
                     .danger()
                     .send();
+                return;
             }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    this.setCoordinates(latLng);
+                    marker.setLngLat([latLng.lng, latLng.lat]);
+                    map.easeTo({ center: [latLng.lng, latLng.lat], zoom: 15 });
+                    this.lat = latLng.lat;
+                    this.lng = latLng.lng;
+                },
+                (err) => {
+                    new FilamentNotification()
+                        .title('Error')
+                        .body('Could not get location. Please check console errors')
+                        .danger()
+                        .send();
+                    console.error('Error getting location:', err);
+                }
+            );
         },
 
         markerMoved(event) {
@@ -292,21 +284,21 @@ export default function mapTilerPicker({ config }) {
             this.lat = position.lat;
             this.lng = position.lng;
             this.setCoordinates({ lat: this.lat, lng: this.lng });
-            this.marker.setLngLat([this.lng, this.lat]);
-            this.map.easeTo({ center: [this.lng, this.lat] });
+            marker.setLngLat([this.lng, this.lat]);
+            map.easeTo({ center: [this.lng, this.lat] });
         },
 
         updateMapFromAlpine() {
             const location = this.getCoordinates();
-            const markerPosition = this.marker.getLngLat();
-            if (location.lat !== markerPosition.lat || location.lng !== markerPosition.lng) {
+            const pos = marker.getLngLat();
+            if (location.lat !== pos.lat || location.lng !== pos.lng) {
                 this.updateMap(location);
             }
         },
 
         updateMap(position) {
-            this.marker.setLngLat([position.lng, position.lat]);
-            this.map.easeTo({ center: [position.lng, position.lat] });
+            marker.setLngLat([position.lng, position.lat]);
+            map.easeTo({ center: [position.lng, position.lat] });
             this.lat = position.lat;
             this.lng = position.lng;
         },
