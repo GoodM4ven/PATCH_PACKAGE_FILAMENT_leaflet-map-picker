@@ -40,7 +40,7 @@ Schema::create('somethings', function (Blueprint $table) {
 
 ### Preparing the models
 
-To use the LeafletMapPicker component, you need to prepare your database and model to store geographical coordinates. The component stores location data as a JSON string in the format `[lat, lng]`.
+To use the MapTiler field component, you need to prepare your database and model to store geographical coordinates. The component stores location data as a JSON string in the format `[lat, lng]`.
 
 ```php
 namespace App\Models;

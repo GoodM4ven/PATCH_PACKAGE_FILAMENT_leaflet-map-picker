@@ -26,7 +26,7 @@ class FilamentMapTilerServiceProvider extends PackageServiceProvider
             ->hasInstallCommand(function (InstallCommand $command) {
                 $command
                     ->publishConfigFile()
-                    ->askToStarRepoOnGitHub('GoodM4ven/PACKAGE_FILAMENT_map-tiler');
+                    ->askToStarRepoOnGitHub('goodm4ven/filament-map-tiler');
             });
 
         $configFileName = static::$name;
@@ -58,7 +58,7 @@ class FilamentMapTilerServiceProvider extends PackageServiceProvider
                 AlpineComponent::make('map-tiler-field', __DIR__ . '/../resources/dist/field.js'),
                 AlpineComponent::make('map-tiler-entry', __DIR__ . '/../resources/dist/entry.js'),
             ],
-            package: 'GoodM4ven/PACKAGE_FILAMENT_map-tiler',
+            package: 'goodm4ven/filament-map-tiler',
         );
 
         $this->publishes([
@@ -68,6 +68,6 @@ class FilamentMapTilerServiceProvider extends PackageServiceProvider
 
     protected function getAssetPackageName(): ?string
     {
-        return 'GoodM4ven/PACKAGE_FILAMENT_map-tiler';
+        return 'goodm4ven/filament-map-tiler';
     }
 }
