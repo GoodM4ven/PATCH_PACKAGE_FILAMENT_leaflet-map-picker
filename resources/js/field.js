@@ -1,12 +1,11 @@
 import * as maptilersdk from '@maptiler/sdk';
 
-export default function leafletMapPicker({ location, config }) {
+export default function leafletMapPicker({ config }) {
     return {
         map: null,
         marker: null,
         lat: null,
         lng: null,
-        location: null,
         config: {
             draggable: true,
             clickable: true,
@@ -44,7 +43,6 @@ export default function leafletMapPicker({ location, config }) {
         },
 
         init() {
-            this.location = location;
             this.config = { ...this.config, ...config };
             maptilersdk.config.apiKey = this.config.apiKey;
 
@@ -53,7 +51,6 @@ export default function leafletMapPicker({ location, config }) {
             }
 
             this.initMap();
-            this.$watch('location', () => this.updateMapFromAlpine());
         },
 
         initMap() {
