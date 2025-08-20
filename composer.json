@@ -1,6 +1,6 @@
 {
-    "name": "GoodM4ven/filament_map-tiler",
-    "version": "1.0.7-dev",
+    "name": "GoodM4ven/filament-map-tiler",
+    "version": "1.0.8-dev",
     "description": "A Filament Forms field that provides an interactive MapTiler map for selecting and storing geographical coordinates.",
     "keywords": [
         "GoodMaven",
