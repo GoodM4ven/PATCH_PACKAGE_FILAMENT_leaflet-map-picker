@@ -42,7 +42,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <p class="text-sm text-gray-700 dark:text-gray-200">
-                        {{ __('filament-map-tiler::map-tiler.selected_locations') }}
+                        {{ __('filament-map-tiler::filament-map-tiler.selected_locations') }}
                         <span class="font-medium" x-text="location ? location.lat.toFixed(6) : ''"></span>,
                         <span class="font-medium" x-text="location ? location.lng.toFixed(6) : ''"></span>
                     </p>

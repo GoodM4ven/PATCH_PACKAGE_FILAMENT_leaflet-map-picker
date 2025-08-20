@@ -8,9 +8,7 @@
         x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'goodm4ven/filament-map-tiler'))]"
         x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'goodm4ven/filament-map-tiler') }}"
         wire:key="{{ $getStatePath() }}"
-        x-data="mapTilerPicker({
-            config: {{ $getMapConfig() }},
-        })"
+        x-data="mapTilerPicker({ config: @js($getMapConfig()) })"
         x-on:livewire:update.window="updateMapFromAlpine()"
         x-ignore
     >
@@ -28,7 +26,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <p class="text-sm text-gray-700 dark:text-gray-200">
-                        {{ __('filament-map-tiler::map-tiler.selected_locations') }}
+                        {{ __('filament-map-tiler::filament-map-tiler.selected_locations') }}
                         <span class="font-medium" x-text="lat ? lat.toFixed(6) : ''"></span>,
                         <span class="font-medium" x-text="lng ? lng.toFixed(6) : ''"></span>
                     </p>
@@ -43,7 +41,7 @@
             x-on:open-modal.window="if ($event.detail.id === 'location-search-modal') searchQuery = ''; localSearchResults = []"
         >
             <x-slot name="heading">
-                {{ __('filament-map-tiler::map-tiler.search_location') }}
+                {{ __('filament-map-tiler::filament-map-tiler.search_location') }}
             </x-slot>
 
             <div class="space-y-4">
@@ -53,7 +51,7 @@
                             type="text"
                             x-model="searchQuery"
                             x-on:input="debounceSearch()"
-                            placeholder="{{ __('filament-map-tiler::map-tiler.search_placeholder') }}"
+                            placeholder="{{ __('filament-map-tiler::filament-map-tiler.search_placeholder') }}"
                         />
                     </x-filament::input.wrapper>
                 </div>
@@ -101,14 +99,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        {{ __('filament-map-tiler::map-tiler.no_results') }}
+                        {{ __('filament-map-tiler::filament-map-tiler.no_results') }}
                     </p>
                 </div>
             </div>
 
             <x-slot name="footer">
                 <x-filament::button color="gray" @click="$dispatch('close-modal', { id: 'location-search-modal' })">
-                    {{ __('filament-map-tiler::map-tiler.cancel') }}
+                    {{ __('filament-map-tiler::filament-map-tiler.cancel') }}
                 </x-filament::button>
             </x-slot>
         </x-filament::modal>

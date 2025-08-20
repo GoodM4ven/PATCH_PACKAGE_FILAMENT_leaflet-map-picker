@@ -13,7 +13,7 @@ class MapTilerField extends Field
 {
     use CanBeReadOnly;
 
-    protected string $view = 'filament-map-tiler::map-tiler-field';
+    protected string $view = 'filament-map-tiler::filament-map-tiler-field';
 
     protected string | Closure $height = '400px';
 
@@ -69,7 +69,7 @@ class MapTilerField extends Field
     {
         parent::setUp();
 
-        $this->afterStateHydrated(fn () => $this->ensureValidApiKey());
+        $this->afterStateHydrated(fn() => $this->ensureValidApiKey());
     }
 
     protected function ensureValidApiKey(): void
@@ -209,14 +209,14 @@ class MapTilerField extends Field
     {
         return (string)$this->evaluate($this->myLocationButtonLabel);
     }
-    
+
     public function searchLocationButtonLabel(string | Closure $searchLocationButtonLabel): static
     {
         $this->searchLocationButtonLabel = $searchLocationButtonLabel;
 
         return $this;
     }
-    
+
     public function getSearchLocationButtonLabel(): string
     {
         return (string)$this->evaluate($this->searchLocationButtonLabel);
@@ -273,29 +273,26 @@ class MapTilerField extends Field
     /**
      * @throws JsonException
      */
-    public function getMapConfig(): string
+    public function getMapConfig(): array
     {
-        return json_encode(
-            array_merge($this->mapConfig, [
-                'draggable' => $this->getDraggable(),
-                'clickable' => $this->getClickable(),
-                'defaultLocation' => $this->getDefaultLocation(),
-                'statePath' => $this->getStatePath(),
-                'defaultZoom' => $this->getDefaultZoom(),
-                'myLocationButtonLabel' => $this->getMyLocationButtonLabel(),
-                'searchLocationButtonLabel' => $this->getSearchLocationButtonLabel(),
-                'tileProvider' => $this->getTileProvider(),
-                'customTiles' => $this->getCustomTiles(),
-                'customMarker' => $this->getCustomMarker(),
-                'markerIconPath' => $this->getMarkerIconPath(),
-                'markerShadowPath' => $this->getMarkerShadowPath(),
-                'map_type_text' => __('filament-map-tiler::map-tiler.map_type'),
-                'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
-                'showTileControl' => $this->showTileControl,
-                'apiKey' => $this->getApiKey(),
-            ]),
-            JSON_THROW_ON_ERROR
-        );
+        return array_merge($this->mapConfig, [
+            'draggable' => $this->getDraggable(),
+            'clickable' => $this->getClickable(),
+            'defaultLocation' => $this->getDefaultLocation(),
+            'statePath' => $this->getStatePath(),
+            'defaultZoom' => $this->getDefaultZoom(),
+            'myLocationButtonLabel' => $this->getMyLocationButtonLabel(),
+            'searchLocationButtonLabel' => $this->getSearchLocationButtonLabel(),
+            'tileProvider' => $this->getTileProvider(),
+            'customTiles' => $this->getCustomTiles(),
+            'customMarker' => $this->getCustomMarker(),
+            'markerIconPath' => $this->getMarkerIconPath(),
+            'markerShadowPath' => $this->getMarkerShadowPath(),
+            'map_type_text' => __('filament-map-tiler::filament-map-tiler.map_type'),
+            'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
+            'showTileControl' => $this->showTileControl,
+            'apiKey' => $this->getApiKey(),
+        ]);
     }
 
     public function apiKey(string | Closure $apiKey): static
