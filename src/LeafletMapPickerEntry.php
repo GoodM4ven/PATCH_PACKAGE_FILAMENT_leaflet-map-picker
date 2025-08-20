@@ -1,16 +1,17 @@
 <?php
 
-namespace Afsakar\LeafletMapPicker;
+namespace GoodMaven\FilamentMapTiler;
 
 use Closure;
 use Filament\Infolists\Components\Entry as Component;
 use Filament\Support\Concerns\HasExtraAlpineAttributes;
+use RuntimeException;
 
 class LeafletMapPickerEntry extends Component
 {
     use HasExtraAlpineAttributes;
 
-    protected string $view = 'filament-leaflet-map-picker::leaflet-map-entry';
+    protected string $view = 'filament-map-tiler::map-tiler-entry';
 
     protected string | Closure $height = '400px';
 
@@ -34,6 +35,31 @@ class LeafletMapPickerEntry extends Component
     protected string | Closure $markerIconPath = '';
 
     protected string | Closure $markerShadowPath = '';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->ensureValidApiKey();
+    }
+
+    protected function ensureValidApiKey(): void
+    {
+        $apiKey = $this->apiKey ?: config('filament-map-tiler.api_key');
+
+        if (! $apiKey) {
+            throw new RuntimeException('MapTiler API key is missing.');
+        }
+
+        if (! app()->environment('testing')) {
+            $headers = @get_headers("https://api.maptiler.com/maps/streets/style.json?key={$apiKey}");
+            if (! $headers || strpos($headers[0], '200') === false) {
+                throw new RuntimeException('MapTiler API key is invalid or could not be verified.');
+            }
+        }
+
+        $this->apiKey = $apiKey;
+    }
 
     public function defaultZoom(int $defaultZoom): static
     {
@@ -116,7 +142,7 @@ class LeafletMapPickerEntry extends Component
 
     public function getMarkerIconPath(): string
     {
-        return $this->evaluate($this->markerIconPath) ?: asset('vendor/leaflet-map-picker/images/marker-icon-2x.png');
+        return $this->evaluate($this->markerIconPath) ?: asset('vendor/filament-map-tiler/images/marker-icon-2x.png');
     }
 
     public function markerShadowPath(string | Closure $path): static
@@ -128,7 +154,7 @@ class LeafletMapPickerEntry extends Component
 
     public function getMarkerShadowPath(): string
     {
-        return $this->evaluate($this->markerShadowPath) ?: asset('vendor/leaflet-map-picker/images/marker-shadow.png');
+        return $this->evaluate($this->markerShadowPath) ?: asset('vendor/filament-map-tiler/images/marker-shadow.png');
     }
 
     public function apiKey(string $apiKey): static

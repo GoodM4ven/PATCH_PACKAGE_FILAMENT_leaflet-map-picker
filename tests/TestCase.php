@@ -1,8 +1,8 @@
 <?php
 
-namespace Afsakar\LeafletMapPicker\Tests;
+namespace GoodMaven\FilamentMapTiler\Tests;
 
-use Afsakar\LeafletMapPicker\LeafletMapPickerServiceProvider;
+use GoodMaven\FilamentMapTiler\FilamentMapTilerServiceProvider;
 use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
 use BladeUI\Icons\BladeIconsServiceProvider;
 use Filament\Actions\ActionsServiceProvider;
@@ -33,16 +33,17 @@ class TestCase extends Orchestra
             LivewireServiceProvider::class,
             NotificationsServiceProvider::class,
             SupportServiceProvider::class,
-            LeafletMapPickerServiceProvider::class,
+            FilamentMapTilerServiceProvider::class,
         ];
     }
 
     public function getEnvironmentSetUp($app)
     {
         config()->set('database.default', 'testing');
+        config()->set('filament-map-tiler.api_key', 'test-key');
 
         /*
-        $migration = include __DIR__.'/../database/migrations/create_filament-leaflet-map-picker_table.php.stub';
+        $migration = include __DIR__.'/../database/migrations/create_filament-map-tiler_table.php.stub';
         $migration->up();
         */
     }

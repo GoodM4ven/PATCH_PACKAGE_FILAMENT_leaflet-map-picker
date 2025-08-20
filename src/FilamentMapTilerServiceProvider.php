@@ -1,20 +1,19 @@
 <?php
 
-namespace Afsakar\LeafletMapPicker;
+namespace GoodMaven\FilamentMapTiler;
 
 use Filament\Support\Assets\AlpineComponent;
-use Filament\Support\Assets\Asset;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class LeafletMapPickerServiceProvider extends PackageServiceProvider
+class FilamentMapTilerServiceProvider extends PackageServiceProvider
 {
-    public static string $name = 'filament-leaflet-map-picker';
+    public static string $name = 'filament-map-tiler';
 
-    public static string $viewNamespace = 'filament-leaflet-map-picker';
+    public static string $viewNamespace = 'filament-map-tiler';
 
     public function configurePackage(Package $package): void
     {
@@ -27,7 +26,7 @@ class LeafletMapPickerServiceProvider extends PackageServiceProvider
             ->hasInstallCommand(function (InstallCommand $command) {
                 $command
                     ->publishConfigFile()
-                    ->askToStarRepoOnGitHub('afsakar/filament-leaflet-map-picker');
+                    ->askToStarRepoOnGitHub('GoodM4ven/PACKAGE_FILAMENT_map-tiler');
             });
 
         $configFileName = static::$name;
@@ -53,22 +52,22 @@ class LeafletMapPickerServiceProvider extends PackageServiceProvider
         FilamentAsset::register(
             assets: [
                 Css::make(
-                    'leaflet-map-picker',
-                    __DIR__ . '/../resources/dist/filament-leaflet-map-picker.css'
+                    'filament-map-tiler',
+                    __DIR__ . '/../resources/dist/filament-map-tiler.css'
                 )->loadedOnRequest(),
-                AlpineComponent::make('leaflet-map-picker', __DIR__ . '/../resources/dist/field.js'),
-                AlpineComponent::make('leaflet-map-picker-entry', __DIR__ . '/../resources/dist/entry.js'),
+                AlpineComponent::make('map-tiler-field', __DIR__ . '/../resources/dist/field.js'),
+                AlpineComponent::make('map-tiler-entry', __DIR__ . '/../resources/dist/entry.js'),
             ],
-            package: 'afsakar/filament-leaflet-map-picker',
+            package: 'GoodM4ven/PACKAGE_FILAMENT_map-tiler',
         );
 
         $this->publishes([
-            __DIR__ . '/../resources/dist/images' => public_path('vendor/leaflet-map-picker/images'),
-        ], 'filament-leaflet-map-picker-assets');
+            __DIR__ . '/../resources/dist/images' => public_path('vendor/filament-map-tiler/images'),
+        ], 'filament-map-tiler-assets');
     }
 
     protected function getAssetPackageName(): ?string
     {
-        return 'afsakar/filament-leaflet-map-picker';
+        return 'GoodM4ven/PACKAGE_FILAMENT_map-tiler';
     }
 }

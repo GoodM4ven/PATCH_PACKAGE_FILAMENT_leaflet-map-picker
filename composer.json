@@ -1,16 +1,16 @@
 {
-    "name": "afsakar/filament-leaflet-map-picker",
+    "name": "GoodM4ven/PACKAGE_FILAMENT_map-tiler",
     "version": "1.0.5-dev",
-    "description": "A Filament Forms component that provides an interactive Leaflet map for selecting and storing geographical coordinates.",
+    "description": "A Filament Forms field that provides an interactive MapTiler map for selecting and storing geographical coordinates.",
     "keywords": [
-        "afsakar",
+        "GoodMaven",
         "laravel",
-        "filament-leaflet-map-picker"
+        "filament-map-tiler"
     ],
-    "homepage": "https://github.com/afsakar/filament-leaflet-map-picker",
+    "homepage": "https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler",
     "support": {
-        "issues": "https://github.com/afsakar/filament-leaflet-map-picker/issues",
-        "source": "https://github.com/afsakar/filament-leaflet-map-picker"
+        "issues": "https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/issues",
+        "source": "https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler"
     },
     "license": "MIT",
     "authors": [
@@ -40,13 +40,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Afsakar\\LeafletMapPicker\\": "src/",
-            "Afsakar\\LeafletMapPicker\\Database\\Factories\\": "database/factories/"
+            "GoodMaven\\FilamentMapTiler\\": "src/",
+            "GoodMaven\\FilamentMapTiler\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Afsakar\\LeafletMapPicker\\Tests\\": "tests/"
+            "GoodMaven\\FilamentMapTiler\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -71,11 +71,8 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Afsakar\\LeafletMapPicker\\LeafletMapPickerServiceProvider"
-            ],
-            "aliases": {
-                "LeafletMapPicker": "Afsakar\\LeafletMapPicker\\Facades\\LeafletMapPicker"
-            }
+                "GoodMaven\\FilamentMapTiler\\FilamentMapTilerServiceProvider"
+            ]
         }
     },
     "minimum-stability": "dev",

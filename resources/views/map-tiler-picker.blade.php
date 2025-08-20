@@ -5,10 +5,10 @@
     <div
         wire:ignore
         ax-load
-        x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('leaflet-map-picker', 'afsakar/filament-leaflet-map-picker'))]"
-        ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('leaflet-map-picker', 'afsakar/filament-leaflet-map-picker') }}"
+        x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'GoodM4ven/PACKAGE_FILAMENT_map-tiler'))]"
+        ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'GoodM4ven/PACKAGE_FILAMENT_map-tiler') }}"
         wire:key="{{ $getStatePath() }}"
-        x-data="leafletMapPicker({
+        x-data="mapTilerPicker({
             config: {{ $getMapConfig() }},
         })"
         x-on:livewire:update.window="updateMapFromAlpine()"
@@ -17,7 +17,7 @@
         <div class="relative w-full mx-auto rounded-lg overflow-hidden shadow bg-gray-50 dark:bg-gray-700">
             <div
                 x-ref="mapContainer"
-                class="leaflet-map-picker w-full relative"
+                class="map-tiler-picker w-full relative"
                 style="height: {{ $getHeight() }}; z-index: 1;"
             ></div>
 
@@ -28,7 +28,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <p class="text-sm text-gray-700 dark:text-gray-200">
-                        {{ __('filament-leaflet-map-picker::leaflet-map-picker.selected_locations') }}
+                        {{ __('filament-map-tiler::map-tiler.selected_locations') }}
                         <span class="font-medium" x-text="lat ? lat.toFixed(6) : ''"></span>,
                         <span class="font-medium" x-text="lng ? lng.toFixed(6) : ''"></span>
                     </p>
@@ -43,7 +43,7 @@
             x-on:open-modal.window="if ($event.detail.id === 'location-search-modal') searchQuery = ''; localSearchResults = []"
         >
             <x-slot name="heading">
-                {{ __('filament-leaflet-map-picker::leaflet-map-picker.search_location') }}
+                {{ __('filament-map-tiler::map-tiler.search_location') }}
             </x-slot>
 
             <div class="space-y-4">
@@ -53,7 +53,7 @@
                             type="text"
                             x-model="searchQuery"
                             x-on:input="debounceSearch()"
-                            placeholder="{{ __('filament-leaflet-map-picker::leaflet-map-picker.search_placeholder') }}"
+                            placeholder="{{ __('filament-map-tiler::map-tiler.search_placeholder') }}"
                         />
                     </x-filament::input.wrapper>
                 </div>
@@ -101,14 +101,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        {{ __('filament-leaflet-map-picker::leaflet-map-picker.no_results') }}
+                        {{ __('filament-map-tiler::map-tiler.no_results') }}
                     </p>
                 </div>
             </div>
 
             <x-slot name="footer">
                 <x-filament::button color="gray" @click="$dispatch('close-modal', { id: 'location-search-modal' })">
-                    {{ __('filament-leaflet-map-picker::leaflet-map-picker.cancel') }}
+                    {{ __('filament-map-tiler::map-tiler.cancel') }}
                 </x-filament::button>
             </x-slot>
         </x-filament::modal>

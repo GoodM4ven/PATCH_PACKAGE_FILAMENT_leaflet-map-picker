@@ -1,13 +1,13 @@
-# FilamentPHP LeafletJS Map Picker
+# FilamentPHP MapTiler Field
 
-A Filament Forms component that provides an interactive Leaflet map for selecting and storing geographical coordinates.
+A Filament Forms component that provides an interactive MapTiler map for selecting and storing geographical coordinates.
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/afsakar/filament-leaflet-map-picker.svg?style=flat-square)](https://packagist.org/packages/afsakar/filament-leaflet-map-picker)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/afsakar/filament-leaflet-map-picker/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/afsakar/filament-leaflet-map-picker/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/afsakar/filament-leaflet-map-picker/fix-php-code-styling.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/afsakar/filament-leaflet-map-picker/actions?query=workflow%3A"Fix+PHP+code+styling"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/afsakar/filament-leaflet-map-picker.svg?style=flat-square)](https://packagist.org/packages/afsakar/filament-leaflet-map-picker)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/GoodM4ven/PACKAGE_FILAMENT_map-tiler.svg?style=flat-square)](https://packagist.org/packages/GoodM4ven/PACKAGE_FILAMENT_map-tiler)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/GoodM4ven/PACKAGE_FILAMENT_map-tiler/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/GoodM4ven/PACKAGE_FILAMENT_map-tiler/fix-php-code-styling.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/actions?query=workflow%3A"Fix+PHP+code+styling"+branch%3Amain)
+[![Total Downloads](https://img.shields.io/packagist/dt/GoodM4ven/PACKAGE_FILAMENT_map-tiler.svg?style=flat-square)](https://packagist.org/packages/GoodM4ven/PACKAGE_FILAMENT_map-tiler)
 
-![Banner](https://raw.githubusercontent.com/afsakar/filament-leaflet-map-picker/main/art/leaflet-js-banner.png "Banner")
+![Banner](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/leaflet-js-banner.png "Banner")
 
 ## Features
 
@@ -21,16 +21,16 @@ A Filament Forms component that provides an interactive Leaflet map for selectin
 - Custom tile layer support
 - Custom marker configuration
 
-![Screenshot](https://raw.githubusercontent.com/afsakar/filament-leaflet-map-picker/main/art/sc-default.png "Default")
+![Screenshot](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/sc-default.png "Default")
 
 ## Installation
 
 You can install the package via composer:
 
 ```bash
-composer require afsakar/filament-leaflet-map-picker
+composer require GoodM4ven/PACKAGE_FILAMENT_map-tiler
 
-php artisan vendor:publish --tag="filament-leaflet-map-picker-assets"
+php artisan vendor:publish --tag="filament-map-tiler-assets"
 ```
 
 ### Database Migration
@@ -73,20 +73,20 @@ class Property extends Model
 You can publish the lang files with:
 
 ```bash
-php artisan vendor:publish --tag="filament-leaflet-map-picker-translations"
+php artisan vendor:publish --tag="filament-map-tiler-translations"
 ```
 
 Optionally, you can publish the views using
 
 ```bash
-php artisan vendor:publish --tag="filament-leaflet-map-picker-views"
+php artisan vendor:publish --tag="filament-map-tiler-views"
 ```
 
 ## Usage
 
 ### Form
 ```php
-use Afsakar\LeafletMapPicker\LeafletMapPicker;
+use GoodMaven\FilamentMapTiler\LeafletMapPicker;
 
 // Basic usage
 LeafletMapPicker::make('location')
@@ -116,7 +116,7 @@ LeafletMapPicker::make('location')
 ### Infolist
 
 ```php
-use Afsakar\LeafletMapPicker\LeafletMapPickerEntry;
+use GoodMaven\FilamentMapTiler\LeafletMapPickerEntry;
 
 // Basic usage
 LeafletMapPickerEntry::make('location')
@@ -141,13 +141,13 @@ LeafletMapPickerEntry::make('location')
 ## Screenshots
 
 Default:
-![Screenshot](https://raw.githubusercontent.com/afsakar/filament-leaflet-map-picker/main/art/sc-default.png "Default")
+![Screenshot](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/sc-default.png "Default")
 
 Custom Marker:
-![Screenshot](https://raw.githubusercontent.com/afsakar/filament-leaflet-map-picker/main/art/sc-custom-marker.png "Custom Marker")
+![Screenshot](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/sc-custom-marker.png "Custom Marker")
 
 Custom Tile:
-![Screenshot](https://raw.githubusercontent.com/afsakar/filament-leaflet-map-picker/main/art/sc-custom-tile.png "Custom Tile")
+![Screenshot](https://raw.githubusercontent.com/GoodM4ven/PACKAGE_FILAMENT_map-tiler/main/art/sc-custom-tile.png "Custom Tile")
 
 ## Testing
 
