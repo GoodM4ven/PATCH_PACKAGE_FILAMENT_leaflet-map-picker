@@ -20,7 +20,7 @@ A Filament Forms component that provides an interactive MapTiler map for various
 2. Ensure that a valid [MapTiler](https://maptiler.com) API key is given out from the environment.
 
    ```env
-   MAPTILER_API_KEY="..."
+   FILAMENT_MAPTILER_API_KEY="..."
    ```
 
 3. (Optional) You can publish the lang and views files using:

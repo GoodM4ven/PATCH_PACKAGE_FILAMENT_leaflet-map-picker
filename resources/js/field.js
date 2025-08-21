@@ -82,11 +82,22 @@ export default function mapTilerPicker({ config }) {
                 style: tileProviders[this.config.tileProvider] || maptilersdk.MapStyle.STREETS,
                 center,
                 zoom: this.config.defaultZoom,
+                navigationControl: false,
             };
             if (this.config.hash) mapOptions.hash = true;
             if (this.config.maxBounds) mapOptions.maxBounds = this.config.maxBounds;
             if (this.config.geolocate) mapOptions.geolocate = maptilersdk.GeolocationType.POINT;
+
             map = new maptilersdk.Map(mapOptions);
+
+            map.addControl(
+                new maptilersdk.MaptilerNavigationControl({
+                    showCompass: false,
+                    showZoom: true,
+                    visualizePitch: false,
+                }),
+                'top-right'
+            );
 
             // avoid empty sprite warning noise (harmless, but noisy)
             map.on('styleimagemissing', (e) => {
