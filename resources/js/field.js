@@ -187,7 +187,8 @@ export default function mapTilerPicker({ config }) {
                     this.container = document.createElement('div');
                     this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
                     const btn = document.createElement('button');
-                    btn.className = 'grid items-center';
+                    btn.className = 'items-center';
+                    btn.style.display = 'grid';
                     btn.style.justifyContent = 'center';
                     btn.type = 'button';
                     btn.innerHTML = [
