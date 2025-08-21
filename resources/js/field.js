@@ -32,7 +32,7 @@ export default function mapTilerPicker({ config }) {
             hash: false,
             maxBounds: null,
             language: null,
-            geolocate: false,
+            geolocate: false
         },
 
         init() {
@@ -177,11 +177,11 @@ export default function mapTilerPicker({ config }) {
                     this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
                     const btn = document.createElement('button');
                     btn.type = 'button';
-                    btn.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-                </svg>`;
+                    btn.innerHTML = [
+                        '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">',
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>',
+                        '</svg>',
+                    ].join('');
                     btn.title = self.config.searchLocationButtonLabel || 'Search Location';
                     btn.onclick = () => {
                         self.$dispatch('open-modal', { id: 'location-search-modal' });
