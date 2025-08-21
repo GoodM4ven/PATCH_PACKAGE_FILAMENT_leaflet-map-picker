@@ -1,137 +1,111 @@
 # FilamentPHP MapTiler Field
 
-A Filament Forms component that provides an interactive MapTiler map for selecting and storing geographical coordinates.
+A Filament Forms component that provides an interactive MapTiler map for various geographical actions...
 
 ## Todos
 
-- Interactive map for location selection
-- Customizable map height
-- Default location configuration
-- Adjustable zoom level
-- Draggable and clickable markers
-- "My Location" button for quick navigation to user's current position
-- Support for different tile providers (OpenStreetMap by default)
-- Custom tile layer support
-- Custom marker configuration
+- Interactive map for coordinates search and selection
+- ...
 
 ## Installation
 
-You can install the package via composer:
+1. Install the package via composer:
 
-```bash
-composer require goodm4ven/filament-map-tiler
+   ```bash
+   composer require goodm4ven/filament-map-tiler
 
-php artisan vendor:publish --tag="filament-map-tiler-assets"
-```
+   php artisan vendor:publish --tag="filament-map-tiler-config"
+   ```
 
-### Database Migration
+2. Ensure that a valid [MapTiler](https://maptiler.com) API key is given out from the environment.
 
-Create a column in your table to store the location data. You can use a `text` or `json` column type:
+   ```env
+   MAPTILER_API_KEY="..."
+   ```
 
-```php
-Schema::create('somethings', function (Blueprint $table) {
-    // ...
-    $table->text('location')->nullable(); // Stores coordinates as JSON string
-    // OR
-    $table->json('location')->nullable();
-    // ...
-});
-```
+3. (Optional) You can publish the lang and views files using:
 
-### Preparing the models
+   ```bash
+   php artisan vendor:publish --tag="filament-map-tiler-translations"
+   php artisan vendor:publish --tag="filament-map-tiler-views"
+   ```
 
-To use the MapTiler field component, you need to prepare your database and model to store geographical coordinates. The component stores location data as a JSON string in the format `[lat, lng]`.
+## Preparation
 
-```php
-namespace App\Models;
+1. Create a column in your model's migration table to store the location data.
 
-use Illuminate\Database\Eloquent\Model;
+   ```php
+   Schema::create('somethings', function (Blueprint $table) {
+       // ...
+       $table->text('location')->nullable(); // JSON stuff
+       // OR
+       $table->json('location')->nullable();
+       // ...
+   });
+   ```
 
-class Something extends Model
-{
-    protected $fillable = [
-        // ...
-        'location',
-    ];
+2. Prepare the model for location storage. Data is a JSON string.
 
-    protected $casts = [
-        // ...
-        'location' => 'array',
-    ];
-}
-```
-
-You can publish the lang files with:
-```bash
-php artisan vendor:publish --tag="filament-map-tiler-translations"
-```
-
-Optionally, you can also publish the views using:
-```bash
-php artisan vendor:publish --tag="filament-map-tiler-views"
-```
+   ```php
+   class Something extends Model
+   {
+       protected $fillable = [
+           'location',
+       ];
+   
+       protected $casts = [
+           'location' => 'array',
+       ];
+   }
+   ```
 
 ## Usage
 
-### Form
-```php
-use GoodMaven\FilamentMapTiler\MapTilerField;
+1. To show the interactive map, add its [Forms](https://filamentphp.com/docs/fields) field to your Livewire component.
 
-// Basic usage
-MapTilerField::make('location')
-    ->label('Select Location')
+   ```php
+   use GoodMaven\FilamentMapTiler\MapTilerField;
+   // ...
+   MapTilerField::make('location')
+       ->apiKey('ANOTHER_MAPTILER_API_KEY') // overrides the one set in [.env]
+       ->defaultLocation([35.926963, 36.667496]), // defaults to Idlib, Syria!
+       ->tileProvider('STREETS') // defaults to `STREETS`; other options are: OUTDOOR, WINTER, SATELLITE, HYBRID...
+       ->showTileSwitcher(true) // defaults to `false`
+       ->zoomable(false) // defaults to `true`
+       ->clickable(false) // defaults to `true`
+       ->draggable(false) // defaults to `true`
+       ->searchable(false) // defaults to `true`
+       ->hideUiButtons(true) // defaults to `false`
+       ->defaultZoomLevel(18) // defaults to `15`
+       ->label('Location')
+       ->height('700px') // defaults to `500px`
+       ->customMarker([
+           'iconUrl' => asset('images/map-tiler/new-pin.png'),
+           'iconSize' => [40, 40],
+           'iconAnchor' => [20, 40],
+           'popupAnchor' => [0, -40],
+       ]),
+   ```
 
-// Advanced usage with customization
-MapTilerField::make('location')
-    ->label('Property Location')
-    ->height('500px')
-    ->defaultLocation([41.0082, 28.9784]) // Istanbul coordinates
-    ->defaultZoom(15)
-    ->draggable() // default true
-    ->clickable() // default true
-    ->myLocationButtonLabel('Go to My Location')
-    ->hideTileControl()
-    ->readOnly() // default false, when you set this to true, the marker will not be draggable or clickable and current location and search location buttons will be hidden
-    ->apiKey('YOUR_MAPTILER_API_KEY')
-    ->tileProvider('STREETS') // built-in options: STREETS, OUTDOOR, WINTER, SATELLITE, HYBRID, etc.
-    ->customMarker([
-        'iconUrl' => asset('pin-2.png'),
-        'iconSize' => [38, 38],
-        'iconAnchor' => [19, 38],
-        'popupAnchor' => [0, -38]
-    ])
-```
+2. When you only wish to display the location, you'd use an [info-list](https://filamentphp.com/docs/3.x/infolists) component instead:
 
-### Infolist
-
-```php
-use GoodMaven\FilamentMapTiler\MapTilerEntry;
-
-// Basic usage
-MapTilerEntry::make('location')
-    ->label('Location')
-
-// Advanced usage with customization
-MapTilerEntry::make('location')
-    ->label('Property Location')
-    ->height('500px')
-    ->defaultLocation([41.0082, 28.9784])
-    ->apiKey('YOUR_MAPTILER_API_KEY')
-    ->tileProvider('STREETS') // built-in options: STREETS, OUTDOOR, WINTER, SATELLITE, HYBRID, etc.
-    ->hideTileControl()
-    ->customMarker([
-        'iconUrl' => asset('pin-2.png'),
-        'iconSize' => [38, 38],
-        'iconAnchor' => [19, 38],
-        'popupAnchor' => [0, -38]
-    ])
-```
-
-## Testing
-
-```bash
-composer test
-```
+   ```php
+   use GoodMaven\FilamentMapTiler\MapTilerEntry;
+   // ...
+   MapTilerEntry::make('location')
+       ->apiKey('ANOTHER_MAPTILER_API_KEY') // overrides the one set in [.env]
+       ->defaultLocation([35.926963, 36.667496]), // defaults to Idlib, Syria!
+       ->tileProvider('STREETS') // defaults to `STREETS`; other options are: OUTDOOR, WINTER, SATELLITE, HYBRID...
+       ->showTileSwitcher(true) // defaults to `false`
+       ->label('Location')
+       ->height('700px') // defaults to `500px`
+       ->customMarker([
+           'iconUrl' => asset('images/map-tiler/new-pin.png'),
+           'iconSize' => [40, 40],
+           'iconAnchor' => [20, 40],
+           'popupAnchor' => [0, -40],
+       ])
+   ```
 
 ## Credits
 
