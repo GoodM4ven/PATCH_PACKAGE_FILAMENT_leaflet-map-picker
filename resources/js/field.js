@@ -187,7 +187,7 @@ export default function mapTilerPicker({ config }) {
                     this.container = document.createElement('div');
                     this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
                     const btn = document.createElement('button');
-                    btn.className = 'grid justify-center items-center';
+                    btn.className = 'grid !justify-center items-center';
                     btn.type = 'button';
                     btn.innerHTML = [
                         '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">',
