@@ -36,6 +36,16 @@ class MapTilerEntry extends Component
 
     protected string | Closure $markerShadowPath = '';
 
+    protected bool | Closure $disableRotation = false;
+
+    protected bool | Closure $hash = false;
+
+    protected array | Closure | null $maxBounds = null;
+
+    protected string | Closure | null $language = null;
+
+    protected bool | Closure $geolocate = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -131,6 +141,66 @@ class MapTilerEntry extends Component
     public function getCustomTiles(): array
     {
         return $this->customTiles;
+    }
+
+    public function disableRotation(bool | Closure $disable = true): static
+    {
+        $this->disableRotation = $disable;
+
+        return $this;
+    }
+
+    public function getDisableRotation(): bool
+    {
+        return (bool) $this->evaluate($this->disableRotation);
+    }
+
+    public function hash(bool | Closure $hash = true): static
+    {
+        $this->hash = $hash;
+
+        return $this;
+    }
+
+    public function getHash(): bool
+    {
+        return (bool) $this->evaluate($this->hash);
+    }
+
+    public function maxBounds(array | Closure | null $bounds): static
+    {
+        $this->maxBounds = $bounds;
+
+        return $this;
+    }
+
+    public function getMaxBounds(): ?array
+    {
+        return $this->evaluate($this->maxBounds);
+    }
+
+    public function language(string | Closure $language): static
+    {
+        $this->language = $language;
+
+        return $this;
+    }
+
+    public function getLanguage(): ?string
+    {
+        return $this->evaluate($this->language);
+    }
+
+    public function geolocate(bool | Closure $geolocate = true): static
+    {
+        $this->geolocate = $geolocate;
+
+        return $this;
+    }
+
+    public function getGeolocate(): bool
+    {
+        return (bool) $this->evaluate($this->geolocate);
     }
 
     public function markerIconPath(string | Closure $path): static

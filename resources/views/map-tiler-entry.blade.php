@@ -23,7 +23,12 @@
                 customTiles: {{ json_encode($getCustomTiles()) }},
                 markerIconPath: '{{ $getMarkerIconPath() }}',
                 markerShadowPath: '{{ $getMarkerShadowPath() }}',
-                apiKey: '{{ $getApiKey() }}'
+                apiKey: '{{ $getApiKey() }}',
+                disableRotation: {{ $getDisableRotation() ? 'true' : 'false' }},
+                hash: {{ $getHash() ? 'true' : 'false' }},
+                maxBounds: {{ $getMaxBounds() ? json_encode($getMaxBounds()) : 'null' }},
+                language: {{ $getLanguage() ? '\'' . $getLanguage() . '\'' : 'null' }},
+                geolocate: {{ $getGeolocate() ? 'true' : 'false' }}
             }
         })"
         x-ignore

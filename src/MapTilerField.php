@@ -41,6 +41,16 @@ class MapTilerField extends Field
 
     protected bool $showTileControl = true;
 
+    protected bool | Closure $disableRotation = false;
+
+    protected bool | Closure $hash = false;
+
+    protected array | Closure | null $maxBounds = null;
+
+    protected string | Closure | null $language = null;
+
+    protected bool | Closure $geolocate = false;
+
     private int $precision = 8;
 
     protected ?array $customMarker = null;
@@ -63,6 +73,11 @@ class MapTilerField extends Field
         'markerShadowPath' => '',
         'apiKey' => '',
         'showTaleControl' => false,
+        'disableRotation' => false,
+        'hash' => false,
+        'maxBounds' => null,
+        'language' => null,
+        'geolocate' => false,
     ];
 
     protected function setUp(): void
@@ -270,6 +285,66 @@ class MapTilerField extends Field
         return $this->evaluate($this->markerShadowPath) ?: asset('vendor/filament-map-tiler/images/marker-shadow.png');
     }
 
+    public function disableRotation(bool | Closure $disable = true): static
+    {
+        $this->disableRotation = $disable;
+
+        return $this;
+    }
+
+    public function getDisableRotation(): bool
+    {
+        return (bool) $this->evaluate($this->disableRotation);
+    }
+
+    public function hash(bool | Closure $hash = true): static
+    {
+        $this->hash = $hash;
+
+        return $this;
+    }
+
+    public function getHash(): bool
+    {
+        return (bool) $this->evaluate($this->hash);
+    }
+
+    public function maxBounds(array | Closure | null $bounds): static
+    {
+        $this->maxBounds = $bounds;
+
+        return $this;
+    }
+
+    public function getMaxBounds(): ?array
+    {
+        return $this->evaluate($this->maxBounds);
+    }
+
+    public function language(string | Closure $language): static
+    {
+        $this->language = $language;
+
+        return $this;
+    }
+
+    public function getLanguage(): ?string
+    {
+        return $this->evaluate($this->language);
+    }
+
+    public function geolocate(bool | Closure $geolocate = true): static
+    {
+        $this->geolocate = $geolocate;
+
+        return $this;
+    }
+
+    public function getGeolocate(): bool
+    {
+        return (bool) $this->evaluate($this->geolocate);
+    }
+
     /**
      * @throws JsonException
      */
@@ -291,6 +366,11 @@ class MapTilerField extends Field
             'map_type_text' => __('filament-map-tiler::filament-map-tiler.map_type'),
             'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
             'showTileControl' => $this->showTileControl,
+            'disableRotation' => $this->getDisableRotation(),
+            'hash' => $this->getHash(),
+            'maxBounds' => $this->getMaxBounds(),
+            'language' => $this->getLanguage(),
+            'geolocate' => $this->getGeolocate(),
             'apiKey' => $this->getApiKey(),
         ]);
     }

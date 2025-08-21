@@ -69,16 +69,17 @@ A Filament Forms component that provides an interactive MapTiler map for various
    MapTilerField::make('location')
        ->apiKey('ANOTHER_MAPTILER_API_KEY') // overrides the one set in [.env]
        ->defaultLocation([35.926963, 36.667496]), // defaults to Idlib, Syria!
-       ->tileProvider('STREETS') // defaults to `STREETS`; other options are: OUTDOOR, WINTER, SATELLITE, HYBRID...
-       ->showTileSwitcher(true) // defaults to `false`
-       ->zoomable(false) // defaults to `true`
+       ->tileProvider('STREETS') // defaults to `STREETS`; other options: OUTDOOR, WINTER, SATELLITE, HYBRID...
+       ->hideTileControl() // hide style selector, shown by default
        ->clickable(false) // defaults to `true`
        ->draggable(false) // defaults to `true`
-       ->searchable(false) // defaults to `true`
-       ->hideUiButtons(true) // defaults to `false`
-       ->defaultZoomLevel(18) // defaults to `15`
-       ->label('Location')
-       ->height('700px') // defaults to `500px`
+       ->defaultZoom(18) // defaults to `13`
+       ->language('FRENCH') // change map labels language
+       ->geolocate() // center map to visitor's location
+       ->hash() // keep map view in the URL hash
+       ->disableRotation() // prevent map rotation
+       ->maxBounds([[-74.1,40.7],[-73.9,40.9]]) // restrict map panning
+       ->height('700px') // defaults to `400px`
        ->customMarker([
            'iconUrl' => asset('images/map-tiler/new-pin.png'),
            'iconSize' => [40, 40],
@@ -95,10 +96,13 @@ A Filament Forms component that provides an interactive MapTiler map for various
    MapTilerEntry::make('location')
        ->apiKey('ANOTHER_MAPTILER_API_KEY') // overrides the one set in [.env]
        ->defaultLocation([35.926963, 36.667496]), // defaults to Idlib, Syria!
-       ->tileProvider('STREETS') // defaults to `STREETS`; other options are: OUTDOOR, WINTER, SATELLITE, HYBRID...
-       ->showTileSwitcher(true) // defaults to `false`
-       ->label('Location')
-       ->height('700px') // defaults to `500px`
+       ->tileProvider('STREETS') // defaults to `STREETS`; other options: OUTDOOR, WINTER, SATELLITE, HYBRID...
+       ->hideTileControl()
+       ->language('SPANISH')
+       ->hash()
+       ->geolocate()
+       ->disableRotation()
+       ->height('700px') // defaults to `400px`
        ->customMarker([
            'iconUrl' => asset('images/map-tiler/new-pin.png'),
            'iconSize' => [40, 40],

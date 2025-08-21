@@ -18,6 +18,11 @@ export default function mapTilerEntry({ location, config }) {
             markerIconPath: '',
             markerShadowPath: '',
             apiKey: '',
+            disableRotation: false,
+            hash: false,
+            maxBounds: null,
+            language: null,
+            geolocate: false,
         },
 
         tileProviders: {
@@ -40,6 +45,10 @@ export default function mapTilerEntry({ location, config }) {
                 throw new Error('MapTiler API key is required');
             }
             maptilersdk.config.apiKey = this.config.apiKey;
+            if (this.config.language) {
+                const lang = maptilersdk.Language[this.config.language] || this.config.language;
+                maptilersdk.config.primaryLanguage = lang;
+            }
 
             if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
                 this.tileProviders = { ...this.tileProviders, ...this.config.customTiles };
@@ -51,13 +60,17 @@ export default function mapTilerEntry({ location, config }) {
         initMap() {
             const coords = [this.getCoordinates().lng, this.getCoordinates().lat];
 
-            this.map = new maptilersdk.Map({
+            const mapOptions = {
                 container: this.$refs.mapContainer,
                 style: this.tileProviders[this.config.tileProvider] || maptilersdk.MapStyle.STREETS,
                 center: coords,
                 zoom: this.config.defaultZoom,
                 interactive: false,
-            });
+            };
+            if (this.config.hash) mapOptions.hash = true;
+            if (this.config.maxBounds) mapOptions.maxBounds = this.config.maxBounds;
+            if (this.config.geolocate) mapOptions.geolocate = maptilersdk.GeolocationType.POINT;
+            this.map = new maptilersdk.Map(mapOptions);
 
             const markerOptions = {};
             if (this.config.customMarker) {
@@ -67,6 +80,14 @@ export default function mapTilerEntry({ location, config }) {
 
             if (this.config.showTileControl) {
                 this.addTileSelectorControl();
+            }
+            if (this.config.disableRotation) {
+                this.map.dragRotate.disable();
+                this.map.touchZoomRotate.disableRotation();
+            }
+            if (this.config.language) {
+                const lang = maptilersdk.Language[this.config.language] || this.config.language;
+                this.map.on('load', () => this.map.setLanguage(lang));
             }
         },
 
