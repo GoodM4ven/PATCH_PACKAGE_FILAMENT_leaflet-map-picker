@@ -28,6 +28,11 @@ export default function mapTilerPicker({ config }) {
             showTileControl: true,
             apiKey: '',
             map_type_text: 'Map Type',
+            disableRotation: false,
+            hash: false,
+            maxBounds: null,
+            language: null,
+            geolocate: false,
         },
 
         init() {
@@ -44,6 +49,10 @@ export default function mapTilerPicker({ config }) {
             this.config = { ...this.config, ...config };
             if (!this.config.apiKey) throw new Error('MapTiler API key is required');
             maptilersdk.config.apiKey = this.config.apiKey;
+            if (this.config.language) {
+                const lang = maptilersdk.Language[this.config.language] || this.config.language;
+                maptilersdk.config.primaryLanguage = lang;
+            }
 
             tileProviders = {
                 STREETS: maptilersdk.MapStyle.STREETS,
@@ -68,12 +77,16 @@ export default function mapTilerPicker({ config }) {
             const initial = { ...this.getCoordinates() };
             const center = [initial.lng, initial.lat];
 
-            map = new maptilersdk.Map({
+            const mapOptions = {
                 container: this.$refs.mapContainer,
                 style: tileProviders[this.config.tileProvider] || maptilersdk.MapStyle.STREETS,
                 center,
                 zoom: this.config.defaultZoom,
-            });
+            };
+            if (this.config.hash) mapOptions.hash = true;
+            if (this.config.maxBounds) mapOptions.maxBounds = this.config.maxBounds;
+            if (this.config.geolocate) mapOptions.geolocate = maptilersdk.GeolocationType.POINT;
+            map = new maptilersdk.Map(mapOptions);
 
             // avoid empty sprite warning noise (harmless, but noisy)
             map.on('styleimagemissing', (e) => {
@@ -97,6 +110,14 @@ export default function mapTilerPicker({ config }) {
                 this.addSearchButton();
             }
             if (this.config.showTileControl) this.addTileSelectorControl();
+            if (this.config.disableRotation) {
+                map.dragRotate.disable();
+                map.touchZoomRotate.disableRotation();
+            }
+            if (this.config.language) {
+                const lang = maptilersdk.Language[this.config.language] || this.config.language;
+                map.on('load', () => map.setLanguage(lang));
+            }
         },
 
         // --- search helpers now use the store
