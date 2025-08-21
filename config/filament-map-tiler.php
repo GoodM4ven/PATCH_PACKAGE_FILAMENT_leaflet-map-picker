@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'api_key' => env('MAPTILER_API_KEY', ''),
+    'api_key' => env('FILAMENT_MAPTILER_API_KEY', ''),
 ];

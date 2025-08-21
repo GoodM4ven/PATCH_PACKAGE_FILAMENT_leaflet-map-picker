@@ -1,15 +1,15 @@
-import esbuild from 'esbuild'
+import esbuild from 'esbuild';
 
-const isDev = process.argv.includes('--dev')
+const isDev = process.argv.includes('--dev');
 
 async function compile(options) {
-    const context = await esbuild.context(options)
+    const context = await esbuild.context(options);
 
     if (isDev) {
-        await context.watch()
+        await context.watch();
     } else {
-        await context.rebuild()
-        await context.dispose()
+        await context.rebuild();
+        await context.dispose();
     }
 }
 
@@ -25,30 +25,37 @@ const defaultOptions = {
     treeShaking: true,
     target: ['es2020'],
     minify: !isDev,
-    plugins: [{
-        name: 'watchPlugin',
-        setup: function (build) {
-            build.onStart(() => {
-                console.log(`Build started at ${new Date(Date.now()).toLocaleTimeString()}: ${build.initialOptions.outfile}`)
-            })
+    plugins: [
+        {
+            name: 'watchPlugin',
+            setup: function (build) {
+                build.onStart(() => {
+                    console.log(`Build started at ${new Date(Date.now()).toLocaleTimeString()}: ${build.initialOptions.outfile}`);
+                });
 
-            build.onEnd((result) => {
-                if (result.errors.length > 0) {
-                    console.log(`Build failed at ${new Date(Date.now()).toLocaleTimeString()}: ${build.initialOptions.outfile}`, result.errors)
-                } else {
-                    console.log(`Build finished at ${new Date(Date.now()).toLocaleTimeString()}: ${build.initialOptions.outfile}`)
-                }
-            })
-        }
-    }],
-}
+                build.onEnd((result) => {
+                    if (result.errors.length > 0) {
+                        console.log(
+                            `Build failed at ${new Date(Date.now()).toLocaleTimeString()}: ${build.initialOptions.outfile}`,
+                            result.errors
+                        );
+                    } else {
+                        console.log(
+                            `Build finished at ${new Date(Date.now()).toLocaleTimeString()}: ${build.initialOptions.outfile}`
+                        );
+                    }
+                });
+            },
+        },
+    ],
+};
 
-const components = ['field', 'entry']
+const components = ['field', 'entry'];
 
 components.forEach((component) => {
     compile({
         ...defaultOptions,
         entryPoints: [`./resources/js/${component}.js`],
         outfile: `./resources/dist/${component}.js`,
-    })
-})
+    });
+});
