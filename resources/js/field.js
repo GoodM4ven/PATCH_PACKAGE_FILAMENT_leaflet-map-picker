@@ -1,5 +1,20 @@
 import * as maptilersdk from '@maptiler/sdk';
 
+function backoffDelays(max = 5) {
+    // 0.5s, 1s, 2s, 4s, 8s
+    return Array.from({ length: max }, (_, i) => 500 * Math.pow(2, i));
+}
+
+async function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+}
+
+function isTransientNetworkError(err) {
+    const msg = (err && (err.message || err.toString())) || '';
+    // Chrome error string or fetch TypeError
+    return msg.includes('ERR_NETWORK_CHANGED') || msg.includes('Failed to fetch') || msg.includes('NetworkError');
+}
+
 export default function mapTilerPicker({ config }) {
     let map = null;
     let marker = null;
@@ -84,6 +99,66 @@ export default function mapTilerPicker({ config }) {
             this.initMap();
         },
 
+        recreateMapInstance() {
+            // Preserve state
+            const center = marker ? marker.getLngLat() : null;
+            const zoom = map ? map.getZoom() : this.config.defaultZoom;
+            const styleName = this.config.style;
+
+            // Clean up old instance
+            try {
+                map && map.remove();
+            } catch (_) {}
+            map = null;
+            marker = null;
+
+            // Re-init
+            this.initMap();
+
+            // Restore state
+            if (center) {
+                map.setCenter([center.lng, center.lat]);
+                map.setZoom(zoom);
+                marker.setLngLat([center.lng, center.lat]);
+            }
+            // Ensure style stays what user picked
+            if (styleName) this.setStyle(styleName);
+        },
+
+        async tryReloadStyleWithBackoff() {
+            const delays = backoffDelays(5);
+            for (let i = 0; i < delays.length; i++) {
+                try {
+                    // Force a style re-apply triggers a fresh style.json fetch
+                    const style = styles[this.config.style] || maptilersdk.MapStyle.STREETS;
+                    map.setStyle(style);
+                    // wait until style is actually loaded or throws
+                    await new Promise((resolve, reject) => {
+                        const onError = (e) => reject(e && e.error ? e.error : new Error('style error'));
+                        const onStyle = () => {
+                            map.off('error', onError);
+                            resolve();
+                        };
+                        map.once('styledata', onStyle);
+                        map.once('error', onError);
+                    });
+                    return true; // success
+                } catch (err) {
+                    // only backoff for transient errors; otherwise bail early
+                    if (!isTransientNetworkError(err)) break;
+                    await sleep(delays[i]);
+                }
+            }
+            return false;
+        },
+
+        hardRefreshSoon() {
+            // Avoid thrashing: only refresh when tab is visible & online
+            if (document.visibilityState !== 'visible') return;
+            if (!navigator.onLine) return;
+            this.recreateMapInstance();
+        },
+
         initMap() {
             const initial = { ...this.getCoordinates() };
             const center = [initial.lng, initial.lat];
@@ -160,6 +235,50 @@ export default function mapTilerPicker({ config }) {
             } else if (locales[this.config.language]) {
                 map.setLocale(locales[this.config.language]);
             }
+
+            // If the WebGL context is lost (sleep/driver hiccup), prevent default and try to recover.
+            map.on('webglcontextlost', (e) => {
+                e.preventDefault(); // tell the browser we will recover
+                // Light touch: try a style reload; if it fails, hard refresh
+                this.tryReloadStyleWithBackoff().then((ok) => {
+                    if (!ok) this.hardRefreshSoon();
+                });
+            });
+
+            // Map/lib errors during style/source fetch: debounce + backoff retry or hard refresh.
+            let errorTimer = null;
+            map.on('error', (evt) => {
+                const err = evt && evt.error;
+                const transient = isTransientNetworkError(err);
+                if (!transient) return; // don't loop on non-network errors
+                if (errorTimer) clearTimeout(errorTimer);
+                errorTimer = setTimeout(() => {
+                    this.tryReloadStyleWithBackoff().then((ok) => {
+                        if (!ok) this.hardRefreshSoon();
+                    });
+                }, 150); // small debounce to coalesce bursts
+            });
+
+            // When the user regains connectivity, try to reload style quickly.
+            window.addEventListener('online', () => {
+                this.tryReloadStyleWithBackoff().then((ok) => {
+                    if (!ok) this.hardRefreshSoon();
+                });
+            });
+
+            // When tab becomes visible after sleep, re-verify the map.
+            document.addEventListener(
+                'visibilitychange',
+                () => {
+                    if (document.visibilityState === 'visible') {
+                        // attempt a gentle path first
+                        this.tryReloadStyleWithBackoff().then((ok) => {
+                            if (!ok) this.hardRefreshSoon();
+                        });
+                    }
+                },
+                { passive: true }
+            );
         },
 
         // --- search helpers now use the store
@@ -206,8 +325,18 @@ export default function mapTilerPicker({ config }) {
         },
 
         setStyle(styleName) {
+            this.config.style = styleName; // persist chosen style
             const style = styles[styleName] || maptilersdk.MapStyle.STREETS;
-            map.setStyle(style);
+            try {
+                map.setStyle(style);
+            } catch (err) {
+                // If called while context is flaky, schedule a hard refresh
+                if (isTransientNetworkError(err)) {
+                    this.hardRefreshSoon();
+                } else {
+                    console.error('setStyle failed:', err);
+                }
+            }
         },
 
         addSearchButton() {
