@@ -5,12 +5,14 @@ namespace GoodMaven\FilamentMapTiler;
 use Closure;
 use Filament\Infolists\Components\Entry as Component;
 use Filament\Support\Concerns\HasExtraAlpineAttributes;
+use GoodMaven\FilamentMapTiler\Concerns\HasMapFeatures;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
 class MapTilerEntry extends Component
 {
     use HasExtraAlpineAttributes;
+    use HasMapFeatures;
 
     protected string $view = 'filament-map-tiler::filament-map-tiler-entry';
 
@@ -37,15 +39,11 @@ class MapTilerEntry extends Component
 
     protected string|Closure $markerShadowPath = '';
 
-    protected bool|Closure $disableRotation = false;
-
     protected bool|Closure $hash = false;
 
     protected array|Closure|null $maxBounds = null;
 
     protected string|Closure|null $language = null;
-
-    protected bool|Closure $geolocate = false;
 
     protected function setUp(): void
     {
@@ -148,18 +146,6 @@ class MapTilerEntry extends Component
         return $this->customTiles;
     }
 
-    public function disableRotation(bool|Closure $disable = true): static
-    {
-        $this->disableRotation = $disable;
-
-        return $this;
-    }
-
-    public function getDisableRotation(): bool
-    {
-        return (bool) $this->evaluate($this->disableRotation);
-    }
-
     public function hash(bool|Closure $hash = true): static
     {
         $this->hash = $hash;
@@ -194,18 +180,6 @@ class MapTilerEntry extends Component
     public function getLanguage(): ?string
     {
         return $this->evaluate($this->language);
-    }
-
-    public function geolocate(bool|Closure $geolocate = true): static
-    {
-        $this->geolocate = $geolocate;
-
-        return $this;
-    }
-
-    public function getGeolocate(): bool
-    {
-        return (bool) $this->evaluate($this->geolocate);
     }
 
     public function markerIconPath(string|Closure $path): static
