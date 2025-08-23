@@ -26,8 +26,6 @@ class MapTilerField extends Field
 
     protected bool|Closure $clickable = true;
 
-    protected string|Closure|null $myLocationButtonLabel = 'My Location';
-
     protected string|Closure|null $searchLocationButtonLabel = 'Search Location';
 
     protected string|Closure $style = 'STREETS';
@@ -40,7 +38,7 @@ class MapTilerField extends Field
 
     protected string|Closure $markerShadowPath = '';
 
-    protected bool $showTileSwitcher = true;
+    protected bool $showStyleSwitcher = false;
 
     protected bool|Closure $disableRotation = false;
 
@@ -67,7 +65,6 @@ class MapTilerField extends Field
         ],
         'statePath' => '',
         'defaultZoom' => 13,
-        'myLocationButtonLabel' => '',
         'searchLocationButtonLabel' => '',
         'style' => 'STREETS',
         'customTiles' => [],
@@ -113,16 +110,16 @@ class MapTilerField extends Field
         $this->apiKey = $apiKey;
     }
 
-    public function hideTileSwitcher(): static
+    public function showStyleSwitcher(): static
     {
-        $this->showTileSwitcher = false;
+        $this->showStyleSwitcher = true;
 
         return $this;
     }
 
-    public function getTileSwitcherVisibility(): bool
+    public function getStyleSwitcherVisibility(): bool
     {
-        return $this->evaluate($this->showTileSwitcher);
+        return $this->evaluate($this->showStyleSwitcher);
     }
 
     public function customMarker(array $config): static
@@ -219,18 +216,6 @@ class MapTilerField extends Field
     public function getHeight(): string
     {
         return (string) $this->evaluate($this->height);
-    }
-
-    public function myLocationButtonLabel(string|Closure $myLocationButtonLabel): static
-    {
-        $this->myLocationButtonLabel = $myLocationButtonLabel;
-
-        return $this;
-    }
-
-    public function getMyLocationButtonLabel(): string
-    {
-        return (string) $this->evaluate($this->myLocationButtonLabel);
     }
 
     public function searchLocationButtonLabel(string|Closure $searchLocationButtonLabel): static
@@ -376,7 +361,6 @@ class MapTilerField extends Field
             'defaultLocation' => $this->getDefaultLocation(),
             'statePath' => $this->getStatePath(),
             'defaultZoom' => $this->getDefaultZoom(),
-            'myLocationButtonLabel' => $this->getMyLocationButtonLabel(),
             'searchLocationButtonLabel' => $this->getSearchLocationButtonLabel(),
             'style' => $this->getStyle(),
             'customTiles' => $this->getCustomTiles(),
@@ -385,7 +369,7 @@ class MapTilerField extends Field
             'markerShadowPath' => $this->getMarkerShadowPath(),
             'style_text' => __('filament-map-tiler::filament-map-tiler.map_style'),
             'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
-            'showStyleSwitcher' => $this->showTileSwitcher,
+            'showStyleSwitcher' => $this->showStyleSwitcher,
             'disableRotation' => $this->getDisableRotation(),
             'hash' => $this->getHash(),
             'maxBounds' => $this->getMaxBounds(),

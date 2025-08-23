@@ -11,7 +11,7 @@ export default function mapTilerEntry({ location, config }) {
             style: 'STREETS',
             customTiles: [],
             customMarker: null,
-            showStyleSwitcher: true,
+            showStyleSwitcher: false,
             markerIconPath: '',
             markerShadowPath: '',
             apiKey: '',

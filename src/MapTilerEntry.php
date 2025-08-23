@@ -27,7 +27,7 @@ class MapTilerEntry extends Component
 
     protected string $apiKey = '';
 
-    protected bool $showTileSwitcher = true;
+    protected bool $showStyleSwitcher = false;
 
     protected ?array $customMarker = null;
 
@@ -97,9 +97,9 @@ class MapTilerEntry extends Component
         return $this;
     }
 
-    public function hideTileSwitcher(): static
+    public function showStyleSwitcher(): static
     {
-        $this->showTileSwitcher = false;
+        $this->showStyleSwitcher = true;
 
         return $this;
     }
@@ -133,9 +133,9 @@ class MapTilerEntry extends Component
         return $this->style;
     }
 
-    public function getShowTileSwitcher(): bool
+    public function getShowStyleSwitcher(): bool
     {
-        return $this->showTileSwitcher;
+        return $this->showStyleSwitcher;
     }
 
     public function getCustomMarker(): ?array

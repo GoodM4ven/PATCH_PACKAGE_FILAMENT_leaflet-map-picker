@@ -68,14 +68,14 @@ A Filament Forms component that provides an interactive MapTiler map for various
    // ...
    MapTilerField::make('location')
        ->apiKey('ANOTHER_MAPTILER_API_KEY') // overrides the one set in [.env]
-       ->defaultLocation([35.926963, 36.667496]), // defaults to Idlib, Syria!
+       ->defaultLocation([35.926963, 36.667496]),
        ->style('STREETS') // defaults to `STREETS`; other options: OUTDOOR, WINTER, SATELLITE, HYBRID...
-       ->hideTileSwitcher() // hide style selector, shown by default
+       ->showStyleSwitcher() // shows style selector, hidden by default
        ->clickable(false) // defaults to `true`
        ->draggable(false) // defaults to `true`
        ->defaultZoom(18) // defaults to `13`
        ->zoomable(false) // disable zoom interactions
-       ->language('FRENCH') // change map labels and UI language
+       ->language('ARABIC') // change map labels and UI language
        ->geolocate() // center map to visitor's location
        ->hash() // keep map view in the URL hash
        ->disableRotation() // prevent map rotation
@@ -95,11 +95,11 @@ A Filament Forms component that provides an interactive MapTiler map for various
    use GoodMaven\FilamentMapTiler\MapTilerEntry;
    // ...
    MapTilerEntry::make('location')
-       ->apiKey('ANOTHER_MAPTILER_API_KEY') // overrides the one set in [.env]
-       ->defaultLocation([35.926963, 36.667496]), // defaults to Idlib, Syria!
+       ->apiKey('ANOTHER_MAPTILER_API_KEY') // ? overrides the one set in [.env]
+       ->defaultLocation([35.926963, 36.667496]),
        ->style('STREETS') // defaults to `STREETS`; other options: OUTDOOR, WINTER, SATELLITE, HYBRID...
-       ->hideTileSwitcher()
-       ->language('SPANISH')
+       ->showStyleSwitcher() // shows style selector, hidden by default
+       ->language('ARABIC')
        ->hash()
        ->geolocate()
        ->disableRotation()

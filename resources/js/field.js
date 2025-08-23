@@ -25,16 +25,14 @@ export default function mapTilerPicker({ config }) {
             draggable: true,
             clickable: true,
             defaultZoom: 13,
-            defaultLocation: { lat: 41.0082, lng: 28.9784 },
-            myLocationButtonLabel: '',
+            defaultLocation: { lat: 41.0082, lng: 28.9784 }, // ???
             searchLocationButtonLabel: '',
             statePath: '',
             style: 'STREETS',
             customTiles: [],
             customMarker: null,
-            // NOTE: search vars now live in the Alpine store, not here
             is_disabled: false,
-            showStyleSwitcher: true,
+            showStyleSwitcher: false,
             apiKey: '',
             style_text: 'Map Style',
             disableRotation: false,
@@ -290,9 +288,31 @@ export default function mapTilerPicker({ config }) {
             map.easeTo({ center: [this.lng, this.lat] });
         },
 
+        updateMapFromAlpine() {
+            const location = this.getCoordinates();
+            const pos = marker.getLngLat();
+            if (location.lat !== pos.lat || location.lng !== pos.lng) {
+                this.updateMap(location);
+            }
+        },
+
+        updateMap(position) {
+            marker.setLngLat([position.lng, position.lat]);
+            map.easeTo({ center: [position.lng, position.lat] });
+            this.lat = position.lat;
+            this.lng = position.lng;
+        },
+
         setCoordinates(position) {
-            const state = this.config.statePath;
-            this.$dispatch('input', { statePath: state, value: JSON.stringify(position) });
+            this.$wire.set(this.config.statePath, { lat: position.lat, lng: position.lng });
+        },
+
+        getCoordinates() {
+            let location = this.$wire.get(this.config.statePath);
+            if (!location || !location.lat || !location.lng) {
+                location = { lat: this.config.defaultLocation.lat, lng: this.config.defaultLocation.lng };
+            }
+            return { lat: location.lat, lng: location.lng };
         },
     };
 }
