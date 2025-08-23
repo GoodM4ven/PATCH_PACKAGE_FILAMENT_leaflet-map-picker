@@ -6,6 +6,7 @@ use Closure;
 use Exception;
 use Filament\Forms\Components\Concerns\CanBeReadOnly;
 use Filament\Forms\Components\Field;
+use Illuminate\Support\Facades\Cache;
 use JsonException;
 use RuntimeException;
 
@@ -15,41 +16,43 @@ class MapTilerField extends Field
 
     protected string $view = 'filament-map-tiler::map-tiler-field';
 
-    protected string | Closure $height = '400px';
+    protected string|Closure $height = '400px';
 
-    protected array | Closure | null $defaultLocation = [37.9106, 40.2365];
+    protected array|Closure|null $defaultLocation = [37.9106, 40.2365];
 
-    protected int | Closure $defaultZoom = 13;
+    protected int|Closure $defaultZoom = 13;
 
-    protected bool | Closure $draggable = true;
+    protected bool|Closure $draggable = true;
 
-    protected bool | Closure $clickable = true;
+    protected bool|Closure $clickable = true;
 
-    protected string | Closure | null $myLocationButtonLabel = 'My Location';
+    protected string|Closure|null $myLocationButtonLabel = 'My Location';
 
-    protected string | Closure | null $searchLocationButtonLabel = 'Search Location';
+    protected string|Closure|null $searchLocationButtonLabel = 'Search Location';
 
-    protected string | Closure $tileProvider = 'STREETS';
+    protected string|Closure $style = 'STREETS';
 
-    protected string | Closure $apiKey = '';
+    protected string|Closure $apiKey = '';
 
-    protected array | Closure $customTiles = [];
+    protected array|Closure $customTiles = [];
 
-    protected string | Closure $markerIconPath = '';
+    protected string|Closure $markerIconPath = '';
 
-    protected string | Closure $markerShadowPath = '';
+    protected string|Closure $markerShadowPath = '';
 
-    protected bool $showTileControl = true;
+    protected bool $showTileSwitcher = true;
 
-    protected bool | Closure $disableRotation = false;
+    protected bool|Closure $disableRotation = false;
 
-    protected bool | Closure $hash = false;
+    protected bool|Closure $hash = false;
 
-    protected array | Closure | null $maxBounds = null;
+    protected array|Closure|null $maxBounds = null;
 
-    protected string | Closure | null $language = null;
+    protected string|Closure|null $language = null;
 
-    protected bool | Closure $geolocate = false;
+    protected bool|Closure $geolocate = false;
+
+    protected bool|Closure $zoomable = true;
 
     private int $precision = 8;
 
@@ -66,25 +69,26 @@ class MapTilerField extends Field
         'defaultZoom' => 13,
         'myLocationButtonLabel' => '',
         'searchLocationButtonLabel' => '',
-        'tileProvider' => 'STREETS',
+        'style' => 'STREETS',
         'customTiles' => [],
         'customMarker' => null,
         'markerIconPath' => '',
         'markerShadowPath' => '',
         'apiKey' => '',
-        'showTaleControl' => false,
+        'showStyleSwitcher' => false,
         'disableRotation' => false,
         'hash' => false,
         'maxBounds' => null,
         'language' => null,
         'geolocate' => false,
+        'zoomable' => true,
     ];
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->afterStateHydrated(fn() => $this->ensureValidApiKey());
+        $this->afterStateHydrated(fn () => $this->ensureValidApiKey());
     }
 
     protected function ensureValidApiKey(): void
@@ -96,25 +100,29 @@ class MapTilerField extends Field
         }
 
         if (! app()->environment('testing')) {
-            $headers = @get_headers("https://api.maptiler.com/maps/streets/style.json?key={$apiKey}");
-            if (! $headers || strpos($headers[0], '200') === false) {
-                throw new RuntimeException('MapTiler API key is invalid or could not be verified.');
+            $cacheKey = 'filament-map-tiler-api-key-'.md5($apiKey);
+            if (! Cache::get($cacheKey)) {
+                $headers = @get_headers("https://api.maptiler.com/maps/streets/style.json?key={$apiKey}");
+                if (! $headers || strpos($headers[0], '200') === false) {
+                    throw new RuntimeException('MapTiler API key is invalid or could not be verified.');
+                }
+                Cache::forever($cacheKey, true);
             }
         }
 
         $this->apiKey = $apiKey;
     }
 
-    public function hideTileControl(): static
+    public function hideTileSwitcher(): static
     {
-        $this->showTileControl = false;
+        $this->showTileSwitcher = false;
 
         return $this;
     }
 
-    public function getTileControlVisibility(): bool
+    public function getTileSwitcherVisibility(): bool
     {
-        return $this->evaluate($this->showTileControl);
+        return $this->evaluate($this->showTileSwitcher);
     }
 
     public function customMarker(array $config): static
@@ -129,7 +137,7 @@ class MapTilerField extends Field
         return $this->customMarker;
     }
 
-    public function defaultLocation(array | Closure $defaultLocation): static
+    public function defaultLocation(array|Closure $defaultLocation): static
     {
         $this->defaultLocation = $defaultLocation;
 
@@ -157,7 +165,7 @@ class MapTilerField extends Field
         ];
     }
 
-    public function defaultZoom(int | Closure $defaultZoom): static
+    public function defaultZoom(int|Closure $defaultZoom): static
     {
         $this->defaultZoom = $defaultZoom;
 
@@ -169,7 +177,7 @@ class MapTilerField extends Field
         return $this->evaluate($this->defaultZoom);
     }
 
-    public function draggable(bool | Closure $draggable = true): static
+    public function draggable(bool|Closure $draggable = true): static
     {
         $this->draggable = $draggable;
 
@@ -185,7 +193,7 @@ class MapTilerField extends Field
         return $this->evaluate($this->draggable);
     }
 
-    public function clickable(bool | Closure $clickable = true): static
+    public function clickable(bool|Closure $clickable = true): static
     {
         $this->clickable = $clickable;
 
@@ -201,7 +209,7 @@ class MapTilerField extends Field
         return $this->evaluate($this->clickable);
     }
 
-    public function height(string | Closure $height): static
+    public function height(string|Closure $height): static
     {
         $this->height = $height;
 
@@ -210,10 +218,10 @@ class MapTilerField extends Field
 
     public function getHeight(): string
     {
-        return (string)$this->evaluate($this->height);
+        return (string) $this->evaluate($this->height);
     }
 
-    public function myLocationButtonLabel(string | Closure $myLocationButtonLabel): static
+    public function myLocationButtonLabel(string|Closure $myLocationButtonLabel): static
     {
         $this->myLocationButtonLabel = $myLocationButtonLabel;
 
@@ -222,10 +230,10 @@ class MapTilerField extends Field
 
     public function getMyLocationButtonLabel(): string
     {
-        return (string)$this->evaluate($this->myLocationButtonLabel);
+        return (string) $this->evaluate($this->myLocationButtonLabel);
     }
 
-    public function searchLocationButtonLabel(string | Closure $searchLocationButtonLabel): static
+    public function searchLocationButtonLabel(string|Closure $searchLocationButtonLabel): static
     {
         $this->searchLocationButtonLabel = $searchLocationButtonLabel;
 
@@ -234,22 +242,22 @@ class MapTilerField extends Field
 
     public function getSearchLocationButtonLabel(): string
     {
-        return (string)$this->evaluate($this->searchLocationButtonLabel);
+        return (string) $this->evaluate($this->searchLocationButtonLabel);
     }
 
-    public function tileProvider(string | Closure $tileProvider): static
+    public function style(string|Closure $style): static
     {
-        $this->tileProvider = $tileProvider;
+        $this->style = $style;
 
         return $this;
     }
 
-    public function getTileProvider(): string
+    public function getStyle(): string
     {
-        return (string)$this->evaluate($this->tileProvider);
+        return (string) $this->evaluate($this->style);
     }
 
-    public function customTiles(array | Closure $customTiles): static
+    public function customTiles(array|Closure $customTiles): static
     {
         $this->customTiles = $customTiles;
 
@@ -258,10 +266,10 @@ class MapTilerField extends Field
 
     public function getCustomTiles(): array
     {
-        return (array)$this->evaluate($this->customTiles);
+        return (array) $this->evaluate($this->customTiles);
     }
 
-    public function markerIconPath(string | Closure $path): static
+    public function markerIconPath(string|Closure $path): static
     {
         $this->markerIconPath = $path;
 
@@ -273,7 +281,7 @@ class MapTilerField extends Field
         return $this->evaluate($this->markerIconPath) ?: asset('vendor/filament-map-tiler/images/marker-icon-2x.png');
     }
 
-    public function markerShadowPath(string | Closure $path): static
+    public function markerShadowPath(string|Closure $path): static
     {
         $this->markerShadowPath = $path;
 
@@ -285,7 +293,7 @@ class MapTilerField extends Field
         return $this->evaluate($this->markerShadowPath) ?: asset('vendor/filament-map-tiler/images/marker-shadow.png');
     }
 
-    public function disableRotation(bool | Closure $disable = true): static
+    public function disableRotation(bool|Closure $disable = true): static
     {
         $this->disableRotation = $disable;
 
@@ -297,7 +305,7 @@ class MapTilerField extends Field
         return (bool) $this->evaluate($this->disableRotation);
     }
 
-    public function hash(bool | Closure $hash = true): static
+    public function hash(bool|Closure $hash = true): static
     {
         $this->hash = $hash;
 
@@ -309,7 +317,7 @@ class MapTilerField extends Field
         return (bool) $this->evaluate($this->hash);
     }
 
-    public function maxBounds(array | Closure | null $bounds): static
+    public function maxBounds(array|Closure|null $bounds): static
     {
         $this->maxBounds = $bounds;
 
@@ -321,7 +329,7 @@ class MapTilerField extends Field
         return $this->evaluate($this->maxBounds);
     }
 
-    public function language(string | Closure $language): static
+    public function language(string|Closure $language): static
     {
         $this->language = $language;
 
@@ -333,7 +341,7 @@ class MapTilerField extends Field
         return $this->evaluate($this->language);
     }
 
-    public function geolocate(bool | Closure $geolocate = true): static
+    public function geolocate(bool|Closure $geolocate = true): static
     {
         $this->geolocate = $geolocate;
 
@@ -343,6 +351,18 @@ class MapTilerField extends Field
     public function getGeolocate(): bool
     {
         return (bool) $this->evaluate($this->geolocate);
+    }
+
+    public function zoomable(bool|Closure $zoomable = true): static
+    {
+        $this->zoomable = $zoomable;
+
+        return $this;
+    }
+
+    public function getZoomable(): bool
+    {
+        return (bool) $this->evaluate($this->zoomable);
     }
 
     /**
@@ -358,24 +378,25 @@ class MapTilerField extends Field
             'defaultZoom' => $this->getDefaultZoom(),
             'myLocationButtonLabel' => $this->getMyLocationButtonLabel(),
             'searchLocationButtonLabel' => $this->getSearchLocationButtonLabel(),
-            'tileProvider' => $this->getTileProvider(),
+            'style' => $this->getStyle(),
             'customTiles' => $this->getCustomTiles(),
             'customMarker' => $this->getCustomMarker(),
             'markerIconPath' => $this->getMarkerIconPath(),
             'markerShadowPath' => $this->getMarkerShadowPath(),
-            'map_type_text' => __('filament-map-tiler::filament-map-tiler.map_type'),
+            'style_text' => __('filament-map-tiler::filament-map-tiler.map_style'),
             'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
-            'showTileControl' => $this->showTileControl,
+            'showStyleSwitcher' => $this->showTileSwitcher,
             'disableRotation' => $this->getDisableRotation(),
             'hash' => $this->getHash(),
             'maxBounds' => $this->getMaxBounds(),
             'language' => $this->getLanguage(),
             'geolocate' => $this->getGeolocate(),
+            'zoomable' => $this->getZoomable(),
             'apiKey' => $this->getApiKey(),
         ]);
     }
 
-    public function apiKey(string | Closure $apiKey): static
+    public function apiKey(string|Closure $apiKey): static
     {
         $this->apiKey = $apiKey;
 

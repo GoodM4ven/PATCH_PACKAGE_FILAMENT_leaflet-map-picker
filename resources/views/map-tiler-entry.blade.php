@@ -17,8 +17,8 @@
             config: {
                 defaultZoom: {{ $getDefaultZoom() }},
                 defaultLocation: {{ json_encode($getDefaultLocation()) }},
-                tileProvider: '{{ $getTileProvider() }}',
-                showTileControl: {{ $getShowTileControl() ? 'true' : 'false' }},
+                style: '{{ $getStyle() }}',
+                showTileSwitcher: {{ $getShowTileSwitcher() ? 'true' : 'false' }},
                 customMarker: {{ $getCustomMarker() ? json_encode($getCustomMarker()) : 'null' }},
                 customTiles: {{ json_encode($getCustomTiles()) }},
                 markerIconPath: '{{ $getMarkerIconPath() }}',
