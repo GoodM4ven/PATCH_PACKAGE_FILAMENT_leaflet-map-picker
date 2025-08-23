@@ -7,14 +7,11 @@ export default function mapTilerEntry({ location, config }) {
         location: null,
         config: {
             defaultZoom: 13,
-            defaultLocation: {
-                lat: 41.0082,
-                lng: 28.9784,
-            },
-            tileProvider: 'STREETS',
+            defaultLocation: { lat: 41.0082, lng: 28.9784 },
+            style: 'STREETS',
             customTiles: [],
             customMarker: null,
-            showTileControl: true,
+            showStyleSwitcher: true,
             markerIconPath: '',
             markerShadowPath: '',
             apiKey: '',
@@ -25,7 +22,7 @@ export default function mapTilerEntry({ location, config }) {
             geolocate: false,
         },
 
-        tileProviders: {
+        styles: {
             STREETS: maptilersdk.MapStyle.STREETS,
             'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
             'STREETS.LIGHT': maptilersdk.MapStyle.STREETS.LIGHT,
@@ -51,7 +48,7 @@ export default function mapTilerEntry({ location, config }) {
             }
 
             if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
-                this.tileProviders = { ...this.tileProviders, ...this.config.customTiles };
+                this.styles = { ...this.styles, ...this.config.customTiles };
             }
 
             this.initMap();
@@ -62,15 +59,21 @@ export default function mapTilerEntry({ location, config }) {
 
             const mapOptions = {
                 container: this.$refs.mapContainer,
-                style: this.tileProviders[this.config.tileProvider] || maptilersdk.MapStyle.STREETS,
+                style: this.styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center: coords,
                 zoom: this.config.defaultZoom,
                 interactive: false,
             };
             if (this.config.hash) mapOptions.hash = true;
             if (this.config.maxBounds) mapOptions.maxBounds = this.config.maxBounds;
-            if (this.config.geolocate) mapOptions.geolocate = maptilersdk.GeolocationType.POINT;
+
             this.map = new maptilersdk.Map(mapOptions);
+
+            if (this.config.geolocate) {
+                const geo = new maptilersdk.GeolocateControl();
+                this.map.addControl(geo);
+                geo.trigger();
+            }
 
             const markerOptions = {};
             if (this.config.customMarker) {
@@ -78,8 +81,8 @@ export default function mapTilerEntry({ location, config }) {
             }
             this.marker = new maptilersdk.Marker(markerOptions).setLngLat(coords).addTo(this.map);
 
-            if (this.config.showTileControl) {
-                this.addTileSelectorControl();
+            if (this.config.showStyleSwitcher) {
+                this.addStyleSwitcherControl();
             }
             if (this.config.disableRotation) {
                 this.map.dragRotate.disable();
@@ -104,11 +107,11 @@ export default function mapTilerEntry({ location, config }) {
         },
 
         setStyle(styleName) {
-            const style = this.tileProviders[styleName] || maptilersdk.MapStyle.STREETS;
+            const style = this.styles[styleName] || maptilersdk.MapStyle.STREETS;
             this.map.setStyle(style);
         },
 
-        addTileSelectorControl() {
+        addStyleSwitcherControl() {
             const self = this;
             class TileControl {
                 onAdd(map) {
@@ -116,11 +119,11 @@ export default function mapTilerEntry({ location, config }) {
                     this.container = document.createElement('div');
                     this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
                     const select = document.createElement('select');
-                    Object.keys(self.tileProviders).forEach(key => {
+                    Object.keys(self.styles).forEach(key => {
                         const option = document.createElement('option');
                         option.value = key;
-                        option.textContent = self.formatProviderName(key);
-                        if (key === self.config.tileProvider) option.selected = true;
+                        option.textContent = self.formatStyleName(key);
+                        if (key === self.config.style) option.selected = true;
                         select.appendChild(option);
                     });
                     select.onchange = e => self.setStyle(e.target.value);
@@ -135,7 +138,7 @@ export default function mapTilerEntry({ location, config }) {
             this.map.addControl(new TileControl(), 'top-right');
         },
 
-        formatProviderName(name) {
+        formatStyleName(name) {
             return name
                 .replace(/\./g, ' ')
                 .replace(/([A-Z])/g, ' $1')

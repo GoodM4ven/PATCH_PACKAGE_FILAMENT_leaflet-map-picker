@@ -1,12 +1,21 @@
-// in map-tiler-field.js
 import * as maptilersdk from '@maptiler/sdk';
 
 export default function mapTilerPicker({ config }) {
     let map = null;
     let marker = null;
-    let tileProviders = null;
+    let styles = null;
+    const locales = {
+        ar: {
+            'NavigationControl.ZoomIn': 'تكبير',
+            'NavigationControl.ZoomOut': 'تصغير',
+            'NavigationControl.ResetBearing': 'إعادة الاتجاه إلى الشمال',
+            'NavigationControl.RotateLeft': 'استدارة لليسار',
+            'NavigationControl.RotateRight': 'استدارة لليمين',
+            'NavigationControl.PitchUp': 'رفع الميل',
+            'NavigationControl.PitchDown': 'خفض الميل',
+        },
+    };
 
-    // --- helper to access a global store for modal state
     const S = () => Alpine.store('mt');
 
     return {
@@ -20,19 +29,20 @@ export default function mapTilerPicker({ config }) {
             myLocationButtonLabel: '',
             searchLocationButtonLabel: '',
             statePath: '',
-            tileProvider: 'STREETS',
+            style: 'STREETS',
             customTiles: [],
             customMarker: null,
             // NOTE: search vars now live in the Alpine store, not here
             is_disabled: false,
-            showTileControl: true,
+            showStyleSwitcher: true,
             apiKey: '',
-            map_type_text: 'Map Type',
+            style_text: 'Map Style',
             disableRotation: false,
             hash: false,
             maxBounds: null,
             language: null,
             geolocate: false,
+            zoomable: true,
         },
 
         init() {
@@ -54,7 +64,7 @@ export default function mapTilerPicker({ config }) {
                 maptilersdk.config.primaryLanguage = lang;
             }
 
-            tileProviders = {
+            styles = {
                 STREETS: maptilersdk.MapStyle.STREETS,
                 'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
                 'STREETS.LIGHT': maptilersdk.MapStyle.STREETS.LIGHT,
@@ -67,7 +77,7 @@ export default function mapTilerPicker({ config }) {
                 'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
             };
             if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
-                tileProviders = { ...tileProviders, ...this.config.customTiles };
+                styles = { ...styles, ...this.config.customTiles };
             }
 
             this.initMap();
@@ -79,30 +89,46 @@ export default function mapTilerPicker({ config }) {
 
             const mapOptions = {
                 container: this.$refs.mapContainer,
-                style: tileProviders[this.config.tileProvider] || maptilersdk.MapStyle.STREETS,
+                style: styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center,
                 zoom: this.config.defaultZoom,
-                navigationControl: false,
             };
             if (this.config.hash) mapOptions.hash = true;
             if (this.config.maxBounds) mapOptions.maxBounds = this.config.maxBounds;
-            if (this.config.geolocate) mapOptions.geolocate = maptilersdk.GeolocationType.POINT;
 
             map = new maptilersdk.Map(mapOptions);
 
-            map.addControl(
-                new maptilersdk.MaptilerNavigationControl({
-                    showCompass: false,
-                    showZoom: true,
-                    visualizePitch: false,
-                }),
-                'top-right'
-            );
+            if (this.config.geolocate) {
+                const geo = new maptilersdk.GeolocateControl();
+                map.addControl(geo);
+                geo.trigger();
+            }
+
+            if (!this.config.disableRotation) {
+                map.addControl(
+                    new maptilersdk.MaptilerNavigationControl({
+                        showCompass: true,
+                        showZoom: this.config.zoomable,
+                        visualizePitch: true,
+                    }),
+                    'top-right'
+                );
+            } else {
+                map.dragRotate.disable();
+                map.touchZoomRotate.disableRotation();
+            }
+
+            if (!this.config.zoomable) {
+                map.scrollZoom.disable();
+                map.boxZoom.disable();
+                map.doubleClickZoom.disable();
+                map.touchZoomRotate.disable();
+                map.keyboard.disable();
+            }
 
             // avoid empty sprite warning noise (harmless, but noisy)
             map.on('styleimagemissing', (e) => {
                 if (!e.id || !e.id.trim()) return;
-                // you could map.addImage(e.id, ...) here when needed.
             });
 
             const opts = { draggable: this.config.draggable };
@@ -117,17 +143,19 @@ export default function mapTilerPicker({ config }) {
             if (this.config.draggable) marker.on('dragend', () => this.markerMoved({ latLng: marker.getLngLat() }));
 
             if (!this.config.is_disabled) {
-                // this.addLocationButton();
                 this.addSearchButton();
             }
-            if (this.config.showTileControl) this.addTileSelectorControl();
-            if (this.config.disableRotation) {
-                map.dragRotate.disable();
-                map.touchZoomRotate.disableRotation();
-            }
+            if (this.config.showStyleSwitcher) this.addStyleSwitcherControl();
             if (this.config.language) {
                 const lang = maptilersdk.Language[this.config.language] || this.config.language;
-                map.on('load', () => map.setLanguage(lang));
+                map.on('load', () => {
+                    map.setLanguage(lang);
+                    if (locales[this.config.language]) {
+                        map.setLocale(locales[this.config.language]);
+                    }
+                });
+            } else if (locales[this.config.language]) {
+                map.setLocale(locales[this.config.language]);
             }
         },
 
@@ -175,7 +203,7 @@ export default function mapTilerPicker({ config }) {
         },
 
         setStyle(styleName) {
-            const style = tileProviders[styleName] || maptilersdk.MapStyle.STREETS;
+            const style = styles[styleName] || maptilersdk.MapStyle.STREETS;
             map.setStyle(style);
         },
 
@@ -213,7 +241,7 @@ export default function mapTilerPicker({ config }) {
             map.addControl(new SearchControl(), 'top-left');
         },
 
-        addTileSelectorControl() {
+        addStyleSwitcherControl() {
             const self = this;
             class TileControl {
                 onAdd(mp) {
@@ -221,13 +249,13 @@ export default function mapTilerPicker({ config }) {
                     this.container = document.createElement('div');
                     this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
                     const label = document.createElement('label');
-                    label.textContent = self.config.map_type_text;
+                    label.textContent = self.config.style_text;
                     const select = document.createElement('select');
-                    Object.keys(tileProviders).forEach((key) => {
+                    Object.keys(styles).forEach((key) => {
                         const option = document.createElement('option');
                         option.value = key;
-                        option.textContent = self.formatProviderName(key);
-                        if (key === self.config.tileProvider) option.selected = true;
+                        option.textContent = self.formatStyleName(key);
+                        if (key === self.config.style) option.selected = true;
                         select.appendChild(option);
                     });
                     select.onchange = (e) => self.setStyle(e.target.value);
@@ -245,70 +273,12 @@ export default function mapTilerPicker({ config }) {
             map.addControl(new TileControl(), 'top-right');
         },
 
-        formatProviderName(name) {
+        formatStyleName(name) {
             return name
                 .replace(/\./g, ' ')
                 .replace(/([A-Z])/g, ' $1')
                 .replace(/^./, (s) => s.toUpperCase())
                 .trim();
-        },
-
-        addLocationButton() {
-            const self = this;
-            class LocationControl {
-                onAdd(mp) {
-                    this.map = mp;
-                    this.container = document.createElement('div');
-                    this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.innerHTML = [
-                        '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">',
-                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />',
-                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />',
-                        '</svg>',
-                    ].join('');
-                    btn.title = self.config.myLocationButtonLabel || 'My Location';
-                    btn.onclick = () => self.goToCurrentLocation();
-                    this.container.appendChild(btn);
-                    return this.container;
-                }
-                onRemove() {
-                    if (this.container && this.container.parentNode) {
-                        this.container.parentNode.removeChild(this.container);
-                    }
-                    this.map = undefined;
-                }
-            }
-            map.addControl(new LocationControl(), 'top-left');
-        },
-        goToCurrentLocation() {
-            if (!navigator.geolocation) {
-                new FilamentNotification()
-                    .title('No Browser Support')
-                    .body('Your browser does not support location services')
-                    .danger()
-                    .send();
-                return;
-            }
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    this.setCoordinates(latLng);
-                    marker.setLngLat([latLng.lng, latLng.lat]);
-                    map.easeTo({ center: [latLng.lng, latLng.lat], zoom: 15 });
-                    this.lat = latLng.lat;
-                    this.lng = latLng.lng;
-                },
-                (err) => {
-                    new FilamentNotification()
-                        .title('Error')
-                        .body('Could not get location. Please check console errors')
-                        .danger()
-                        .send();
-                    console.error('Error getting location:', err);
-                }
-            );
         },
 
         markerMoved(event) {
@@ -320,31 +290,9 @@ export default function mapTilerPicker({ config }) {
             map.easeTo({ center: [this.lng, this.lat] });
         },
 
-        updateMapFromAlpine() {
-            const location = this.getCoordinates();
-            const pos = marker.getLngLat();
-            if (location.lat !== pos.lat || location.lng !== pos.lng) {
-                this.updateMap(location);
-            }
-        },
-
-        updateMap(position) {
-            marker.setLngLat([position.lng, position.lat]);
-            map.easeTo({ center: [position.lng, position.lat] });
-            this.lat = position.lat;
-            this.lng = position.lng;
-        },
-
         setCoordinates(position) {
-            this.$wire.set(this.config.statePath, { lat: position.lat, lng: position.lng });
-        },
-
-        getCoordinates() {
-            let location = this.$wire.get(this.config.statePath);
-            if (!location || !location.lat || !location.lng) {
-                location = { lat: this.config.defaultLocation.lat, lng: this.config.defaultLocation.lng };
-            }
-            return { lat: location.lat, lng: location.lng };
+            const state = this.config.statePath;
+            this.$dispatch('input', { statePath: state, value: JSON.stringify(position) });
         },
     };
 }
