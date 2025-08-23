@@ -6,6 +6,7 @@ use Closure;
 use Exception;
 use Filament\Forms\Components\Concerns\CanBeReadOnly;
 use Filament\Forms\Components\Field;
+use GoodMaven\FilamentMapTiler\Concerns\HasMapFeatures;
 use Illuminate\Support\Facades\Cache;
 use JsonException;
 use RuntimeException;
@@ -13,6 +14,7 @@ use RuntimeException;
 class MapTilerField extends Field
 {
     use CanBeReadOnly;
+    use HasMapFeatures;
 
     protected string $view = 'filament-map-tiler::map-tiler-field';
 
@@ -40,15 +42,11 @@ class MapTilerField extends Field
 
     protected bool $showStyleSwitcher = false;
 
-    protected bool|Closure $disableRotation = false;
-
     protected bool|Closure $hash = false;
 
     protected array|Closure|null $maxBounds = null;
 
     protected string|Closure|null $language = null;
-
-    protected bool|Closure $geolocate = false;
 
     protected bool|Closure $zoomable = true;
 
@@ -73,7 +71,7 @@ class MapTilerField extends Field
         'markerShadowPath' => '',
         'apiKey' => '',
         'showStyleSwitcher' => false,
-        'disableRotation' => false,
+        'rotationable' => true,
         'hash' => false,
         'maxBounds' => null,
         'language' => null,
@@ -278,18 +276,6 @@ class MapTilerField extends Field
         return $this->evaluate($this->markerShadowPath) ?: asset('vendor/filament-map-tiler/images/marker-shadow.png');
     }
 
-    public function disableRotation(bool|Closure $disable = true): static
-    {
-        $this->disableRotation = $disable;
-
-        return $this;
-    }
-
-    public function getDisableRotation(): bool
-    {
-        return (bool) $this->evaluate($this->disableRotation);
-    }
-
     public function hash(bool|Closure $hash = true): static
     {
         $this->hash = $hash;
@@ -326,18 +312,6 @@ class MapTilerField extends Field
         return $this->evaluate($this->language);
     }
 
-    public function geolocate(bool|Closure $geolocate = true): static
-    {
-        $this->geolocate = $geolocate;
-
-        return $this;
-    }
-
-    public function getGeolocate(): bool
-    {
-        return (bool) $this->evaluate($this->geolocate);
-    }
-
     public function zoomable(bool|Closure $zoomable = true): static
     {
         $this->zoomable = $zoomable;
@@ -370,7 +344,7 @@ class MapTilerField extends Field
             'style_text' => __('filament-map-tiler::filament-map-tiler.map_style'),
             'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
             'showStyleSwitcher' => $this->showStyleSwitcher,
-            'disableRotation' => $this->getDisableRotation(),
+            'rotationable' => $this->getRotationable(),
             'hash' => $this->getHash(),
             'maxBounds' => $this->getMaxBounds(),
             'language' => $this->getLanguage(),

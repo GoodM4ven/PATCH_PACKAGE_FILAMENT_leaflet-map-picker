@@ -15,7 +15,7 @@ export default function mapTilerEntry({ location, config }) {
             markerIconPath: '',
             markerShadowPath: '',
             apiKey: '',
-            disableRotation: false,
+            rotationable: true,
             hash: false,
             maxBounds: null,
             language: null,
@@ -41,7 +41,10 @@ export default function mapTilerEntry({ location, config }) {
             if (!this.config.apiKey) {
                 throw new Error('MapTiler API key is required');
             }
-            maptilersdk.config.apiKey = this.config.apiKey;
+            if (!window.__maptilerApiKey || window.__maptilerApiKey !== this.config.apiKey) {
+                maptilersdk.config.apiKey = this.config.apiKey;
+                window.__maptilerApiKey = this.config.apiKey;
+            }
             if (this.config.language) {
                 const lang = maptilersdk.Language[this.config.language] || this.config.language;
                 maptilersdk.config.primaryLanguage = lang;
@@ -70,9 +73,11 @@ export default function mapTilerEntry({ location, config }) {
             this.map = new maptilersdk.Map(mapOptions);
 
             if (this.config.geolocate) {
+                const ctrlContainer = this.map.getContainer().querySelector('.maplibregl-ctrl-top-right');
+                if (ctrlContainer) ctrlContainer.innerHTML = '';
                 const geo = new maptilersdk.GeolocateControl();
-                this.map.addControl(geo);
-                geo.trigger();
+                this.map.addControl(geo, 'top-right');
+                this.map.on('load', () => geo.trigger());
             }
 
             const markerOptions = {};
@@ -84,7 +89,7 @@ export default function mapTilerEntry({ location, config }) {
             if (this.config.showStyleSwitcher) {
                 this.addStyleSwitcherControl();
             }
-            if (this.config.disableRotation) {
+            if (!this.config.rotationable) {
                 this.map.dragRotate.disable();
                 this.map.touchZoomRotate.disableRotation();
             }

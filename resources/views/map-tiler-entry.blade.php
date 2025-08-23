@@ -24,7 +24,7 @@
                 markerIconPath: '{{ $getMarkerIconPath() }}',
                 markerShadowPath: '{{ $getMarkerShadowPath() }}',
                 apiKey: '{{ $getApiKey() }}',
-                disableRotation: {{ $getDisableRotation() ? 'true' : 'false' }},
+                rotationable: {{ $getRotationable() ? 'true' : 'false' }},
                 hash: {{ $getHash() ? 'true' : 'false' }},
                 maxBounds: {{ $getMaxBounds() ? json_encode($getMaxBounds()) : 'null' }},
                 language: {{ $getLanguage() ? '\'' . $getLanguage() . '\'' : 'null' }},

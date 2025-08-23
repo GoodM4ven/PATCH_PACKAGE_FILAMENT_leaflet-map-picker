@@ -78,7 +78,7 @@ A Filament Forms component that provides an interactive MapTiler map for various
        ->language('ARABIC') // change map labels and UI language
        ->geolocate() // center map to visitor's location
        ->hash() // keep map view in the URL hash
-       ->disableRotation() // prevent map rotation
+       ->rotationable(false) // prevent map rotation
        ->maxBounds([[-74.1,40.7],[-73.9,40.9]]) // restrict map panning
        ->height('700px') // defaults to `400px`
        ->customMarker([
@@ -102,7 +102,7 @@ A Filament Forms component that provides an interactive MapTiler map for various
        ->language('ARABIC')
        ->hash()
        ->geolocate()
-       ->disableRotation()
+       ->rotationable(false)
        ->height('700px') // defaults to `400px`
        ->customMarker([
            'iconUrl' => asset('images/map-tiler/new-pin.png'),

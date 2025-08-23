@@ -35,7 +35,7 @@ export default function mapTilerPicker({ config }) {
             showStyleSwitcher: false,
             apiKey: '',
             style_text: 'Map Style',
-            disableRotation: false,
+            rotationable: true,
             hash: false,
             maxBounds: null,
             language: null,
@@ -56,7 +56,10 @@ export default function mapTilerPicker({ config }) {
 
             this.config = { ...this.config, ...config };
             if (!this.config.apiKey) throw new Error('MapTiler API key is required');
-            maptilersdk.config.apiKey = this.config.apiKey;
+            if (!window.__maptilerApiKey || window.__maptilerApiKey !== this.config.apiKey) {
+                maptilersdk.config.apiKey = this.config.apiKey;
+                window.__maptilerApiKey = this.config.apiKey;
+            }
             if (this.config.language) {
                 const lang = maptilersdk.Language[this.config.language] || this.config.language;
                 maptilersdk.config.primaryLanguage = lang;
@@ -96,22 +99,24 @@ export default function mapTilerPicker({ config }) {
 
             map = new maptilersdk.Map(mapOptions);
 
+            const ctrlContainer = map.getContainer().querySelector('.maplibregl-ctrl-top-right');
+            if (ctrlContainer) ctrlContainer.innerHTML = '';
+
             if (this.config.geolocate) {
                 const geo = new maptilersdk.GeolocateControl();
-                map.addControl(geo);
-                geo.trigger();
+                map.addControl(geo, 'top-right');
+                map.on('load', () => geo.trigger());
             }
 
-            if (!this.config.disableRotation) {
-                map.addControl(
-                    new maptilersdk.MaptilerNavigationControl({
-                        showCompass: true,
-                        showZoom: this.config.zoomable,
-                        visualizePitch: true,
-                    }),
-                    'top-right'
-                );
-            } else {
+            map.addControl(
+                new maptilersdk.MaptilerNavigationControl({
+                    showCompass: this.config.rotationable,
+                    showZoom: this.config.zoomable,
+                    visualizePitch: this.config.rotationable,
+                }),
+                'top-right'
+            );
+            if (!this.config.rotationable) {
                 map.dragRotate.disable();
                 map.touchZoomRotate.disableRotation();
             }
