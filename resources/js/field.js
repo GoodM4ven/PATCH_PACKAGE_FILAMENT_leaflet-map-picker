@@ -168,29 +168,50 @@ export default function mapTilerPicker({ config }) {
                 style: styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center,
                 zoom: this.config.defaultZoom,
+                navigationControl: false,
+                geolocateControl: false,
+                terrainControl: false,
+                scaleControl: false,
+                fullscreenControl: false,
+                projectionControl: false,
             };
             if (this.config.hash) mapOptions.hash = true;
             if (this.config.maxBounds) mapOptions.maxBounds = this.config.maxBounds;
 
             map = new maptilersdk.Map(mapOptions);
 
-            const ctrlContainer = map.getContainer().querySelector('.maplibregl-ctrl-top-right');
-            if (ctrlContainer) ctrlContainer.innerHTML = '';
+            // const ctrlContainer = map.getContainer().querySelector('.maplibregl-ctrl-top-right');
+            // if (ctrlContainer) ctrlContainer.innerHTML = '';
 
             if (this.config.geolocate) {
-                const geo = new maptilersdk.GeolocateControl();
+                const geo = new maptilersdk.GeolocateControl({
+                    trackUserLocation: true,
+                    positionOptions: { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
+                    fitBoundsOptions: { maxZoom: 15 },
+                });
                 map.addControl(geo, 'top-right');
                 map.on('load', () => geo.trigger());
             }
 
-            map.addControl(
-                new maptilersdk.MaptilerNavigationControl({
-                    showCompass: this.config.rotationable,
-                    showZoom: this.config.zoomable,
-                    visualizePitch: this.config.rotationable,
-                }),
-                'top-right'
-            );
+            // map.addControl(
+            //     new maptilersdk.MaptilerNavigationControl({
+            //         showCompass: this.config.rotationable,
+            //         showZoom: this.config.zoomable,
+            //         visualizePitch: this.config.rotationable,
+            //     }),
+            //     'top-right'
+            // );
+            // Navigation: only add if it would display anything
+            if (this.config.rotationable || this.config.zoomable) {
+                map.addControl(
+                    new maptilersdk.MaptilerNavigationControl({
+                        showCompass: this.config.rotationable,
+                        showZoom: this.config.zoomable,
+                        visualizePitch: this.config.rotationable,
+                    }),
+                    'top-right'
+                );
+            }
             if (!this.config.rotationable) {
                 map.dragRotate.disable();
                 map.touchZoomRotate.disableRotation();
@@ -224,14 +245,17 @@ export default function mapTilerPicker({ config }) {
                 this.addSearchButton();
             }
             if (this.config.showStyleSwitcher) this.addStyleSwitcherControl();
+            // Language: set once. If you also set config.primaryLanguage before map init,
+            // there’s no need to call setLanguage() again unless you’re applying custom locales.
             if (this.config.language) {
                 const lang = maptilersdk.Language[this.config.language] || this.config.language;
-                map.on('load', () => {
-                    map.setLanguage(lang);
-                    if (locales[this.config.language]) {
+                // Only apply setLanguage if we also have custom tooltips/locales to merge.
+                if (locales[this.config.language]) {
+                    map.on('load', () => {
+                        map.setLanguage(lang);
                         map.setLocale(locales[this.config.language]);
-                    }
-                });
+                    });
+                }
             } else if (locales[this.config.language]) {
                 map.setLocale(locales[this.config.language]);
             }
