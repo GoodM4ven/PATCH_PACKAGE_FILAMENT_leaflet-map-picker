@@ -11,6 +11,8 @@
         x-data="mapTilerPicker({ config: @js($getMapConfig()) })"
         x-on:livewire:update.window="updateMapFromAlpine()"
         x-ignore
+        x-on:open-modal.window="if ($event.detail.id === 'location-search-modal') { $store.mt.searchQuery = ''; $store.mt.localSearchResults = [] } $el.querySelector('#location-search-modal.heading').style.display = 'inline-block';"
+        x-on:close-modal.window="$el.querySelector('#location-search-modal.heading').style.display = 'none';"
     >
         <div class="relative mx-auto w-full overflow-hidden rounded-lg bg-gray-50 shadow dark:bg-gray-700">
             <div
@@ -63,8 +65,6 @@
             id="location-search-modal"
             slide-over
             width="md"
-            x-on:open-modal.window="if ($event.detail.id === 'location-search-modal') { $store.mt.searchQuery = ''; $store.mt.localSearchResults = [] } $el.style.display = 'inline-block';"
-            x-on:close-modal.window="$el.style.display = 'none';"
         >
             <x-slot name="heading">
                 {{ __('filament-map-tiler::filament-map-tiler.search_location') }}
