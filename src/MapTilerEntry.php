@@ -25,6 +25,8 @@ class MapTilerEntry extends Component
         'lng' => 28.9784,
     ];
 
+    protected bool|Closure $geolocate = false;
+
     protected string $style = 'STREETS';
 
     protected string $apiKey = '';
@@ -86,6 +88,18 @@ class MapTilerEntry extends Component
         $this->defaultLocation = $defaultLocation;
 
         return $this;
+    }
+
+    public function geolocate(bool|Closure $geolocate = true): static
+    {
+        $this->geolocate = $geolocate;
+
+        return $this;
+    }
+
+    public function getGeolocate(): bool
+    {
+        return (bool) $this->evaluate($this->geolocate);
     }
 
     public function style(string $style): static

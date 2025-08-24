@@ -22,6 +22,8 @@ class MapTilerField extends Field
 
     protected array|Closure|null $defaultLocation = [37.9106, 40.2365];
 
+    protected bool|array|Closure $geolocate = false;
+
     protected int|Closure $defaultZoom = 13;
 
     protected bool|Closure $draggable = true;
@@ -75,7 +77,11 @@ class MapTilerField extends Field
         'hash' => false,
         'maxBounds' => null,
         'language' => null,
-        'geolocate' => false,
+        'geolocate' => [
+            'enabled' => false,
+            'runOnLoad' => false,
+            'pinAsWell' => true,
+        ],
         'zoomable' => true,
     ];
 
@@ -83,7 +89,7 @@ class MapTilerField extends Field
     {
         parent::setUp();
 
-        $this->afterStateHydrated(fn () => $this->ensureValidApiKey());
+        $this->afterStateHydrated(fn() => $this->ensureValidApiKey());
     }
 
     protected function ensureValidApiKey(): void
@@ -95,7 +101,7 @@ class MapTilerField extends Field
         }
 
         if (! app()->environment('testing')) {
-            $cacheKey = 'filament-map-tiler-api-key-'.md5($apiKey);
+            $cacheKey = 'filament-map-tiler-api-key-' . md5($apiKey);
             if (! Cache::get($cacheKey)) {
                 $headers = @get_headers("https://api.maptiler.com/maps/streets/style.json?key={$apiKey}");
                 if (! $headers || strpos($headers[0], '200') === false) {
@@ -158,6 +164,53 @@ class MapTilerField extends Field
             'lat' => 41.0082,
             'lng' => 28.9784,
         ];
+    }
+
+    /**
+     * Enable geolocation and optionally control behavior.
+     *
+     * Examples:
+     * ->geolocate()                                // enabled, runOnLoad=false, pinAsWell=true
+     * ->geolocate(runOnLoad: true)                 // enabled, trigger on load
+     * ->geolocate(pinAsWell: false)                // enabled, don't move pin
+     * ->geolocate(false)                           // disabled
+     * ->geolocate(['runOnLoad' => true])           // array form
+     */
+    public function geolocate(bool|array $enabledOrSettings = true, ?bool $runOnLoad = null, ?bool $pinAsWell = null): static
+    {
+        if (is_bool($enabledOrSettings)) {
+            $settings = ['enabled' => $enabledOrSettings];
+        } else {
+            $settings = array_merge(['enabled' => true], $enabledOrSettings);
+        }
+
+        if ($runOnLoad !== null) {
+            $settings['runOnLoad'] = $runOnLoad;
+        }
+        if ($pinAsWell !== null) {
+            $settings['pinAsWell'] = $pinAsWell;
+        }
+
+        $this->geolocate = $settings;
+
+        return $this;
+    }
+
+    public function getGeolocate(): array
+    {
+        $value = $this->evaluate($this->geolocate);
+
+        // Normalize booleans for backward-compat
+        if ($value === false) {
+            return ['enabled' => false, 'runOnLoad' => false, 'pinAsWell' => true];
+        }
+        if ($value === true) {
+            return ['enabled' => true, 'runOnLoad' => false, 'pinAsWell' => true];
+        }
+
+        $defaults = ['enabled' => true, 'runOnLoad' => false, 'pinAsWell' => true];
+
+        return array_merge($defaults, (array) $value);
     }
 
     public function defaultZoom(int|Closure $defaultZoom): static

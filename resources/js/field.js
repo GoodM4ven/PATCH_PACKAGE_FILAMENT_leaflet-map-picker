@@ -54,7 +54,7 @@ export default function mapTilerPicker({ config }) {
             hash: false,
             maxBounds: null,
             language: null,
-            geolocate: false,
+            geolocate: { enabled: false, runOnLoad: false, pinAsWell: true },
             zoomable: true,
         },
 
@@ -70,6 +70,7 @@ export default function mapTilerPicker({ config }) {
             }
 
             this.config = { ...this.config, ...config };
+            
             if (!this.config.apiKey) throw new Error('MapTiler API key is required');
             if (!window.__maptilerApiKey || window.__maptilerApiKey !== this.config.apiKey) {
                 maptilersdk.config.apiKey = this.config.apiKey;
@@ -94,6 +95,15 @@ export default function mapTilerPicker({ config }) {
             };
             if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
                 styles = { ...styles, ...this.config.customTiles };
+            }
+
+            // Back-compat: allow boolean geolocate
+            if (typeof this.config.geolocate === 'boolean') {
+                this.config.geolocate = {
+                    enabled: this.config.geolocate,
+                    runOnLoad: false,
+                    pinAsWell: true,
+                };
             }
 
             this.initMap();
@@ -180,27 +190,34 @@ export default function mapTilerPicker({ config }) {
 
             map = new maptilersdk.Map(mapOptions);
 
-            // const ctrlContainer = map.getContainer().querySelector('.maplibregl-ctrl-top-right');
-            // if (ctrlContainer) ctrlContainer.innerHTML = '';
-
-            if (this.config.geolocate) {
+            const geoCfg = this.config.geolocate || { enabled: false, runOnLoad: false, pinAsWell: true };
+            if (geoCfg.enabled) {
                 const geo = new maptilersdk.GeolocateControl({
                     trackUserLocation: true,
                     positionOptions: { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
                     fitBoundsOptions: { maxZoom: 15 },
                 });
+
                 map.addControl(geo, 'top-right');
-                map.on('load', () => geo.trigger());
+
+                // move the pin when we geolocate (centers the pin on the shown circle)
+                geo.on('geolocate', (e) => {
+                    if (geoCfg.pinAsWell !== false) {
+                        const { latitude, longitude } = e.coords;
+                        marker.setLngLat([longitude, latitude]);
+                        this.lat = latitude;
+                        this.lng = longitude;
+                        this.setCoordinates({ lat: latitude, lng: longitude });
+                        map.easeTo({ center: [longitude, latitude] });
+                    }
+                });
+
+                // trigger automatically only if requested
+                if (geoCfg.runOnLoad) {
+                    map.on('load', () => geo.trigger());
+                }
             }
 
-            // map.addControl(
-            //     new maptilersdk.MaptilerNavigationControl({
-            //         showCompass: this.config.rotationable,
-            //         showZoom: this.config.zoomable,
-            //         visualizePitch: this.config.rotationable,
-            //     }),
-            //     'top-right'
-            // );
             // Navigation: only add if it would display anything
             if (this.config.rotationable || this.config.zoomable) {
                 map.addControl(
