@@ -20,7 +20,7 @@ class MapTilerField extends Field
 
     protected string|Closure $height = '400px';
 
-    protected array|Closure|null $defaultLocation = [37.9106, 40.2365];
+    protected array|Closure|null $defaultLocation = [34.890832, 38.542143];
 
     protected bool|array|Closure $geolocate = false;
 
