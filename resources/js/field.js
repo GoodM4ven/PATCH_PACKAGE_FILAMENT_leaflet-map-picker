@@ -21,6 +21,7 @@ export default function mapTilerPicker({ config }) {
     let styles = null;
     const locales = {
         ar: {
+            // Navigation
             'NavigationControl.ZoomIn': 'تكبير',
             'NavigationControl.ZoomOut': 'تصغير',
             'NavigationControl.ResetBearing': 'إعادة الاتجاه إلى الشمال',
@@ -28,6 +29,22 @@ export default function mapTilerPicker({ config }) {
             'NavigationControl.RotateRight': 'استدارة لليمين',
             'NavigationControl.PitchUp': 'رفع الميل',
             'NavigationControl.PitchDown': 'خفض الميل',
+            // Fullscreen
+            'FullscreenControl.Enter': 'دخول ملء الشاشة',
+            'FullscreenControl.Exit': 'خروج من ملء الشاشة',
+            // Geolocate
+            'GeolocateControl.FindMyLocation': 'تحديد موقعي',
+            'GeolocateControl.LocationNotAvailable': 'الموقع غير متاح',
+            // Scale
+            'ScaleControl.Meters': 'م',
+            'ScaleControl.Kilometers': 'كم',
+            'ScaleControl.Miles': 'ميل',
+            'ScaleControl.NauticalMiles': 'ميل بحري',
+            // Attribution
+            'AttributionControl.ToggleAttribution': 'إظهار/إخفاء الإسناد',
+            // Terrain / Projection (MapTiler extras)
+            'TerrainControl.Toggle': 'تفعيل/إلغاء تضاريس ثلاثية الأبعاد',
+            'ProjectionControl.Toggle': 'تبديل الإسقاط',
         },
     };
 
@@ -70,7 +87,7 @@ export default function mapTilerPicker({ config }) {
             }
 
             this.config = { ...this.config, ...config };
-            
+
             if (!this.config.apiKey) throw new Error('MapTiler API key is required');
             if (!window.__maptilerApiKey || window.__maptilerApiKey !== this.config.apiKey) {
                 maptilersdk.config.apiKey = this.config.apiKey;
@@ -169,6 +186,61 @@ export default function mapTilerPicker({ config }) {
             this.recreateMapInstance();
         },
 
+        applyLocaleIfNeeded() {
+            const lang = this.config.language;
+            if (!lang) return;
+
+            // 1) Map language (place labels on the map itself) – optional
+            const primary = maptilersdk.Language[lang] || lang;
+
+            // If you want map label language too:
+            try {
+                map.setLanguage(primary);
+            } catch {}
+
+            // 2) Control UI language (tooltips/titles)
+            const dict = locales[lang];
+            if (dict) {
+                try {
+                    map.setLocale(dict);
+                } catch {}
+                // 3) DOM fallback for any controls that don't yet bind to locale
+                this.forceArabicTitlesFallback(dict);
+            }
+        },
+
+        forceArabicTitlesFallback(dict = {}) {
+            // Run after controls are present. Best-effort assignment of titles/aria-labels.
+            const set = (selector, title) => {
+                const el = document.querySelector(selector);
+                if (el && title) {
+                    el.setAttribute('title', title);
+                    el.setAttribute('aria-label', title);
+                    // RTL direction helps some assistive tech
+                    el.setAttribute('dir', 'rtl');
+                }
+            };
+
+            // MapLibre classnames
+            set('.maplibregl-ctrl-zoom-in', dict['NavigationControl.ZoomIn'] || 'تكبير');
+            set('.maplibregl-ctrl-zoom-out', dict['NavigationControl.ZoomOut'] || 'تصغير');
+            set('.maplibregl-ctrl-compass', dict['NavigationControl.ResetBearing'] || 'إعادة الاتجاه إلى الشمال');
+
+            // MapTiler nav buttons (pitch/rotate) – compass sub-buttons are created inside; try both
+            set('.maplibregl-ctrl-pitchtoggle', dict['NavigationControl.PitchUp'] || 'رفع الميل');
+            set('.maplibregl-ctrl-rotate-left', dict['NavigationControl.RotateLeft'] || 'استدارة لليسار');
+            set('.maplibregl-ctrl-rotate-right', dict['NavigationControl.RotateRight'] || 'استدارة لليمين');
+
+            // Fullscreen
+            set('.maplibregl-ctrl-fullscreen', dict['FullscreenControl.Enter'] || 'دخول ملء الشاشة');
+
+            // Geolocate
+            set('.maplibregl-ctrl-geolocate', dict['GeolocateControl.FindMyLocation'] || 'تحديد موقعي');
+
+            // Scale has no button but some builds expose a toggle; harmless if not present
+            set('.maplibregl-ctrl-scale', ''); // no tooltip necessary
+        },
+
         initMap() {
             const initial = { ...this.getCoordinates() };
             const center = [initial.lng, initial.lat];
@@ -242,6 +314,8 @@ export default function mapTilerPicker({ config }) {
                 map.keyboard.disable();
             }
 
+            this.applyLocaleIfNeeded();
+
             // avoid empty sprite warning noise (harmless, but noisy)
             map.on('styleimagemissing', (e) => {
                 if (!e.id || !e.id.trim()) return;
@@ -264,18 +338,27 @@ export default function mapTilerPicker({ config }) {
             if (this.config.showStyleSwitcher) this.addStyleSwitcherControl();
             // Language: set once. If you also set config.primaryLanguage before map init,
             // there’s no need to call setLanguage() again unless you’re applying custom locales.
-            if (this.config.language) {
-                const lang = maptilersdk.Language[this.config.language] || this.config.language;
-                // Only apply setLanguage if we also have custom tooltips/locales to merge.
-                if (locales[this.config.language]) {
-                    map.on('load', () => {
-                        map.setLanguage(lang);
-                        map.setLocale(locales[this.config.language]);
-                    });
-                }
-            } else if (locales[this.config.language]) {
-                map.setLocale(locales[this.config.language]);
-            }
+            // if (this.config.language) {
+            //     const lang = maptilersdk.Language[this.config.language] || this.config.language;
+            //     // Only apply setLanguage if we also have custom tooltips/locales to merge.
+            //     if (locales[this.config.language]) {
+            //         map.on('load', () => {
+            //             map.setLanguage(lang);
+            //             map.setLocale(locales[this.config.language]);
+            //         });
+            //     }
+            // } else if (locales[this.config.language]) {
+            //     map.setLocale(locales[this.config.language]);
+            // }
+
+            map.on('load', () => {
+                this.applyLocaleIfNeeded();
+            });
+
+            map.on('styledata', () => {
+                // Controls can get reconstructed; make sure Arabic stays applied
+                this.applyLocaleIfNeeded();
+            });
 
             // If the WebGL context is lost (sleep/driver hiccup), prevent default and try to recover.
             map.on('webglcontextlost', (e) => {
