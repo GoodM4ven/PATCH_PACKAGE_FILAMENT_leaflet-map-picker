@@ -22,6 +22,7 @@ export default function mapTilerPicker({ config }) {
         tickId: null,
         overlay: null,
         banner: null,
+        mapRef: null,
         isLocked() {
             return Date.now() < this.until;
         },
@@ -33,6 +34,9 @@ export default function mapTilerPicker({ config }) {
             this.until = Math.max(this.until, now + ms);
             this.apply(true);
             this.startTicker();
+        },
+        attachMap(mp) {
+            this.mapRef = mp;
         },
         startTicker() {
             if (this.tickId) return;
@@ -59,6 +63,16 @@ export default function mapTilerPicker({ config }) {
                 this.overlay.show();
             } else {
                 this.overlay.hide();
+            }
+            // Belt & suspenders: disable/enable zoom gesture handlers during lock
+            if (this.mapRef) {
+                if (locked) {
+                    this.mapRef.scrollZoom.disable();
+                    this.mapRef.touchZoomRotate.disable();
+                } else {
+                    this.mapRef.scrollZoom.enable({ around: 'center' });
+                    this.mapRef.touchZoomRotate.enable({ around: 'center' });
+                }
             }
         },
         initUI(container) {
@@ -196,6 +210,41 @@ export default function mapTilerPicker({ config }) {
             lock.initUI(this.$refs.mapContainer);
 
             map = new maptilersdk.Map(mapOptions);
+            lock.attachMap(map);
+
+            // --- Rate-limit wheel/trackpad BEFORE ScrollZoomHandler processes it
+            // Take one token per wheel "gesture" and block immediately if out of budget.
+            map.__wheelBudgetActive = false;
+            map.on('wheel', (e) => {
+                if (lock.isLocked()) {
+                    e.preventDefault();
+                    return;
+                }
+                if (!map.__wheelBudgetActive) {
+                    const t = limiters.zoom.try();
+                    if (!t.ok) {
+                        e.preventDefault();
+                        lock.lockFor(t.resetMs);
+                        return;
+                    }
+                    map.__wheelBudgetActive = true;
+                }
+            });
+            // Pinch-to-zoom pre-emption (two-finger)
+            map.on('touchstart', (e) => {
+                const touches = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches.length : 0;
+                if (touches >= 2) {
+                    if (lock.isLocked()) {
+                        e.preventDefault();
+                        return;
+                    }
+                    const t = limiters.zoom.try();
+                    if (!t.ok) {
+                        e.preventDefault();
+                        lock.lockFor(t.resetMs);
+                    }
+                }
+            });
 
             // Throttled writer (drops to global lock when pin quota is out)
             this.commitCoordinates = throttle((position) => {
@@ -284,6 +333,8 @@ export default function mapTilerPicker({ config }) {
             let lastZoom = map.getZoom();
             let suppressZoom = false;
             map.on('zoomend', () => {
+                // reset wheel gesture budget at the end of any zoom
+                map.__wheelBudgetActive = false;
                 if (suppressZoom) {
                     suppressZoom = false;
                     return;
