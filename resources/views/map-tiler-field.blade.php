@@ -63,6 +63,7 @@
             id="location-search-modal"
             slide-over
             width="md"
+            x-bind:style="!isOpen && { display: 'none'}"
             x-on:open-modal.window="if ($event.detail.id === 'location-search-modal') { $store.mt.searchQuery = ''; $store.mt.localSearchResults = [] }"
         >
             <x-slot name="heading">
