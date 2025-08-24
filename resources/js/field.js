@@ -15,10 +15,35 @@ function isTransientNetworkError(err) {
     return msg.includes('ERR_NETWORK_CHANGED') || msg.includes('Failed to fetch') || msg.includes('NetworkError');
 }
 
+function createRateLimiter(limit, interval = 60000) {
+    let tokens = limit;
+    let last = Date.now();
+    return () => {
+        const now = Date.now();
+        if (now - last > interval) {
+            tokens = limit;
+            last = now;
+        }
+        if (tokens > 0) {
+            tokens -= 1;
+            return true;
+        }
+        return false;
+    };
+}
+
 export default function mapTilerPicker({ config }) {
     let map = null;
     let marker = null;
     let styles = null;
+    const limitCfg = config.rateLimit || {};
+    const interval = limitCfg.interval ?? 60000;
+    const limiters = {
+        search: createRateLimiter(limitCfg.search ?? 10, interval),
+        geolocate: createRateLimiter(limitCfg.geolocate ?? 5, interval),
+        move: createRateLimiter(limitCfg.move ?? 60, interval),
+        zoom: createRateLimiter(limitCfg.zoom ?? 60, interval),
+    };
     const locales = {
         ar: {
             // Navigation
@@ -274,6 +299,7 @@ export default function mapTilerPicker({ config }) {
 
                 // move the pin when we geolocate (centers the pin on the shown circle)
                 geo.on('geolocate', (e) => {
+                    if (!limiters.geolocate()) return;
                     if (geoCfg.pinAsWell !== false) {
                         const { latitude, longitude } = e.coords;
                         marker.setLngLat([longitude, latitude]);
@@ -329,8 +355,34 @@ export default function mapTilerPicker({ config }) {
             this.lng = initial.lng;
             this.setCoordinates(initial);
 
-            if (this.config.clickable) map.on('click', (e) => this.markerMoved({ latLng: e.lngLat }));
-            if (this.config.draggable) marker.on('dragend', () => this.markerMoved({ latLng: marker.getLngLat() }));
+            if (this.config.clickable)
+                map.on('click', (e) => {
+                    if (!limiters.move()) return;
+                    this.markerMoved({ latLng: e.lngLat });
+                });
+            if (this.config.draggable)
+                marker.on('dragend', () => {
+                    if (!limiters.move()) {
+                        marker.setLngLat([this.lng, this.lat]);
+                        return;
+                    }
+                    this.markerMoved({ latLng: marker.getLngLat() });
+                });
+
+            let lastZoom = map.getZoom();
+            let suppressZoom = false;
+            map.on('zoomend', () => {
+                if (suppressZoom) {
+                    suppressZoom = false;
+                    return;
+                }
+                if (!limiters.zoom()) {
+                    suppressZoom = true;
+                    map.setZoom(lastZoom);
+                } else {
+                    lastZoom = map.getZoom();
+                }
+            });
 
             if (!this.config.is_disabled) {
                 this.addSearchButton();
@@ -424,6 +476,10 @@ export default function mapTilerPicker({ config }) {
                 st.isSearching = false;
                 return;
             }
+            if (!limiters.search()) {
+                st.isSearching = false;
+                return;
+            }
             try {
                 const results = await maptilersdk.geocoding.forward(query);
                 st.localSearchResults = results.features;
@@ -436,6 +492,7 @@ export default function mapTilerPicker({ config }) {
 
         selectLocationFromModal(result) {
             const [lng, lat] = result.center || result.geometry.coordinates;
+            if (!limiters.move()) return;
             map.setCenter([lng, lat]);
             map.setZoom(15);
             marker.setLngLat([lng, lat]);
