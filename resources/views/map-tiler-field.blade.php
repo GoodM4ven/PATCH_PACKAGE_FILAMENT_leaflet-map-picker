@@ -11,7 +11,6 @@
         x-data="mapTilerPicker({ config: @js($getMapConfig()) })"
         x-on:livewire:update.window="updateMapFromAlpine()"
         x-ignore
-        onload="document.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'none';"
         x-on:open-modal.window="if ($event.detail.id === 'location-search-modal') { $store.mt.searchQuery = ''; $store.mt.localSearchResults = [] } $el.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'inline-block';"
         x-on:close-modal.window="$el.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'none';"
     >
@@ -66,6 +65,7 @@
             id="location-search-modal"
             slide-over
             width="md"
+            :displayClasses="'none'"
         >
             <x-slot name="heading">
                 {{ __('filament-map-tiler::filament-map-tiler.search_location') }}
