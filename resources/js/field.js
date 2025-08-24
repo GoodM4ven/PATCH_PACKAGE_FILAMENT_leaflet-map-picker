@@ -73,11 +73,13 @@ export default function mapTilerPicker({ config }) {
                     } catch (_) {}
                 }
                 if (locked) {
-                    this.mapRef.scrollZoom.disable();
-                    this.mapRef.touchZoomRotate.disable();
+                    this.mapRef.scrollZoom.disable(); // wheel/trackpad zoom
+                    this.mapRef.touchZoomRotate.disable(); // pinch zoom/rotate
+                    this.mapRef.dragPan.disable(); // ⬅️ disable camera panning while locked
                 } else {
                     this.mapRef.scrollZoom.enable({ around: 'center' });
                     this.mapRef.touchZoomRotate.enable({ around: 'center' });
+                    this.mapRef.dragPan.enable(); // re-enable panning when unlocked
                 }
             }
         },
@@ -92,7 +94,7 @@ export default function mapTilerPicker({ config }) {
     const interval = limitCfg.interval ?? 60000;
     const limiters = {
         geolocate: createRateLimiter(limitCfg.geolocate ?? 5, interval),
-        zoom: createRateLimiter(limitCfg.zoom ?? 60, interval),
+        zoom: createRateLimiter(limitCfg.zoom ?? 180, interval),
         pinMove: createRateLimiter(limitCfg.pinMove ?? 60, interval),
         cameraMove: createRateLimiter(limitCfg.cameraMove ?? 120, interval),
         search: createRateLimiter(limitCfg.search ?? 10, interval),
@@ -222,6 +224,17 @@ export default function mapTilerPicker({ config }) {
             // We intercept at the DOM layer (canvas container) to beat handlers.
             map.__zoomTokenConsumed = false; // true when a zoom token was taken before zoomend
             const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
+
+            // Block starting a pan while locked (mouse/touch/pointer)
+            const blockPanStart = (ev) => {
+                if (!lock.isLocked()) return;
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+            };
+            containerEl.addEventListener('pointerdown', blockPanStart, { capture: true });
+            containerEl.addEventListener('mousedown', blockPanStart, { capture: true });
+            containerEl.addEventListener('touchstart', blockPanStart, { passive: false, capture: true });
 
             // Wheel / trackpad: consume a token on EVERY wheel step; if out, block instantly
             const onWheelDom = (ev) => {
@@ -452,12 +465,20 @@ export default function mapTilerPicker({ config }) {
                     }
                     map.__zoomTokenConsumed = true;
                 }
+                // Disable arrow-key panning during lock
+                if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight') {
+                    if (lock.isLocked()) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                    }
+                }
             };
             containerEl.addEventListener('keydown', onKeyDown, { capture: true });
 
-            // Camera pan limiter (user pans)
+            // Camera pan limiter (user pans) — still enforced when not locked
             map.on('dragend', () => {
-                if (lock.isLocked()) return;
+                if (lock.isLocked()) return; // no panning allowed while locked
                 const t = limiters.cameraMove.try();
                 if (!t.ok) lock.lockFor(t.resetMs);
                 // Side-effects like saveViewport() could be done here if t.ok
