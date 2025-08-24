@@ -9,27 +9,134 @@ async function sleep(ms) {
     return new Promise((r) => setTimeout(r, ms));
 }
 
+// --- new: tiny throttle/debounce helpers ------------------------------------
+function throttle(fn, wait) {
+    let last = 0,
+        t = null,
+        lastArgs = null;
+    return (...args) => {
+        const now = Date.now();
+        const remaining = wait - (now - last);
+        lastArgs = args;
+        if (remaining <= 0) {
+            clearTimeout(t);
+            t = null;
+            last = now;
+            fn(...args);
+        } else if (!t) {
+            t = setTimeout(() => {
+                last = Date.now();
+                t = null;
+                fn(...lastArgs);
+            }, remaining);
+        }
+    };
+}
+
+function debounce(fn, wait) {
+    let t = null;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), wait);
+    };
+}
+
 function isTransientNetworkError(err) {
     const msg = (err && (err.message || err.toString())) || '';
     // Chrome error string or fetch TypeError
     return msg.includes('ERR_NETWORK_CHANGED') || msg.includes('Failed to fetch') || msg.includes('NetworkError');
 }
 
+// --- changed: rate limiter now returns metadata (.try(), .peekResetMs()) -----
 function createRateLimiter(limit, interval = 60000) {
     let tokens = limit;
-    let last = Date.now();
-    return () => {
-        const now = Date.now();
-        if (now - last > interval) {
-            tokens = limit;
-            last = now;
-        }
-        if (tokens > 0) {
-            tokens -= 1;
-            return true;
-        }
-        return false;
+    let windowStart = Date.now();
+    return {
+        try() {
+            const now = Date.now();
+            if (now - windowStart >= interval) {
+                tokens = limit;
+                windowStart = now;
+            }
+            const ok = tokens > 0;
+            if (ok) tokens -= 1;
+            const resetMs = Math.max(0, interval - (now - windowStart));
+            return { ok, remaining: tokens, resetMs };
+        },
+        peekResetMs() {
+            const now = Date.now();
+            return Math.max(0, interval - (now - windowStart));
+        },
     };
+}
+
+// --- new: visual feedback for throttling (banner + jitters) ------------------
+function showThrottleBanner({ scope, resetMs }) {
+    let el = document.getElementById('mt-throttle-banner');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'mt-throttle-banner';
+        Object.assign(el.style, {
+            position: 'fixed',
+            top: '8px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(220,53,69,.95)',
+            color: '#fff',
+            padding: '6px 10px',
+            borderRadius: '6px',
+            zIndex: 9999,
+            font: '600 12px system-ui',
+            boxShadow: '0 4px 12px rgba(0,0,0,.25)',
+        });
+        document.body.appendChild(el);
+    }
+    const until = Date.now() + resetMs;
+    const tick = () => {
+        const s = Math.ceil((until - Date.now()) / 1000);
+        el.textContent = `Throttled: ${scope}. Try again in ${Math.max(0, s)}s`;
+        if (s > 0) {
+            el._timer = setTimeout(tick, 250);
+        } else {
+            el.remove();
+        }
+    };
+    clearTimeout(el._timer);
+    tick();
+}
+
+function pinJitter(marker) {
+    const el = marker && marker.getElement ? marker.getElement() : null;
+    if (!el) return;
+    const seq = [2, -4, 3, -2, 1, 0];
+    el.style.transition = 'transform 80ms';
+    let i = 0;
+    const step = () => {
+        if (i < seq.length) {
+            el.style.transform = `translateX(${seq[i++]}px)`;
+            setTimeout(step, 80);
+        }
+    };
+    step();
+}
+
+function cameraJitter(map) {
+    const seq = [
+        [6, 0],
+        [-12, 0],
+        [8, 0],
+        [-4, 0],
+        [2, 0],
+        [0, 0],
+    ];
+    let i = 0;
+    const step = () => {
+        if (i < seq.length) {
+            map.panBy(seq[i++], { duration: 60, animate: true });
+            setTimeout(step, 60);
+        }
+    };
+    step();
 }
 
 export default function mapTilerPicker({ config }) {
@@ -39,10 +146,11 @@ export default function mapTilerPicker({ config }) {
     const limitCfg = config.rateLimit || {};
     const interval = limitCfg.interval ?? 60000;
     const limiters = {
-        search: createRateLimiter(limitCfg.search ?? 10, interval),
         geolocate: createRateLimiter(limitCfg.geolocate ?? 5, interval),
-        move: createRateLimiter(limitCfg.move ?? 60, interval),
         zoom: createRateLimiter(limitCfg.zoom ?? 60, interval),
+        pinMove: createRateLimiter(limitCfg.pinMove ?? 60, interval),
+        cameraMove: createRateLimiter(limitCfg.cameraMove ?? 120, interval),
+        search: createRateLimiter(limitCfg.search ?? 10, interval),
     };
     const locales = {
         ar: {
@@ -78,6 +186,7 @@ export default function mapTilerPicker({ config }) {
     return {
         lat: null,
         lng: null,
+        commitCoordinates: null,
         config: {
             draggable: true,
             clickable: true,
@@ -287,6 +396,17 @@ export default function mapTilerPicker({ config }) {
 
             map = new maptilersdk.Map(mapOptions);
 
+            // define throttled coordinate commit (applies pinMove limiter internally)
+            this.commitCoordinates = throttle((position) => {
+                const t = limiters.pinMove.try();
+                if (t.ok) {
+                    this.setCoordinates(position);
+                } else {
+                    pinJitter(marker);
+                    showThrottleBanner({ scope: 'marker moves', resetMs: t.resetMs });
+                }
+            }, 300);
+
             const geoCfg = this.config.geolocate || { enabled: false, runOnLoad: false, pinAsWell: true };
             if (geoCfg.enabled) {
                 const geo = new maptilersdk.GeolocateControl({
@@ -299,13 +419,18 @@ export default function mapTilerPicker({ config }) {
 
                 // move the pin when we geolocate (centers the pin on the shown circle)
                 geo.on('geolocate', (e) => {
-                    if (!limiters.geolocate()) return;
+                    const t = limiters.geolocate.try();
+                    if (!t.ok) {
+                        pinJitter(marker);
+                        showThrottleBanner({ scope: 'geolocate', resetMs: t.resetMs });
+                        return;
+                    }
                     if (geoCfg.pinAsWell !== false) {
                         const { latitude, longitude } = e.coords;
                         marker.setLngLat([longitude, latitude]);
                         this.lat = latitude;
                         this.lng = longitude;
-                        this.setCoordinates({ lat: latitude, lng: longitude });
+                        this.commitCoordinates({ lat: latitude, lng: longitude });
                         map.easeTo({ center: [longitude, latitude] });
                     }
                 });
@@ -357,15 +482,12 @@ export default function mapTilerPicker({ config }) {
 
             if (this.config.clickable)
                 map.on('click', (e) => {
-                    if (!limiters.move()) return;
+                    // UI always updates; commit is throttled + rate-limited inside
                     this.markerMoved({ latLng: e.lngLat });
                 });
             if (this.config.draggable)
                 marker.on('dragend', () => {
-                    if (!limiters.move()) {
-                        marker.setLngLat([this.lng, this.lat]);
-                        return;
-                    }
+                    // Do not snap back; jitter + banner will happen if throttled
                     this.markerMoved({ latLng: marker.getLngLat() });
                 });
 
@@ -376,11 +498,33 @@ export default function mapTilerPicker({ config }) {
                     suppressZoom = false;
                     return;
                 }
-                if (!limiters.zoom()) {
+                const t = limiters.zoom.try();
+                if (!t.ok) {
                     suppressZoom = true;
                     map.setZoom(lastZoom);
                 } else {
                     lastZoom = map.getZoom();
+                }
+            });
+
+            // NEW: camera (map) pan throttling feedback, separate from pin moves
+            map.on('dragend', (e) => {
+                const t = limiters.cameraMove.try();
+                if (!t.ok) {
+                    cameraJitter(map);
+                    showThrottleBanner({ scope: 'map pans', resetMs: t.resetMs });
+                }
+                // If you have side-effects for viewport saves, do them only when t.ok
+                // e.g., if (t.ok) saveViewport(map.getCenter(), map.getZoom());
+            });
+            // Count programmatic moves too (optional)
+            map.on('moveend', (e) => {
+                if (!e.originalEvent) {
+                    const t = limiters.cameraMove.try();
+                    if (!t.ok) {
+                        cameraJitter(map);
+                        showThrottleBanner({ scope: 'auto-move', resetMs: t.resetMs });
+                    }
                 }
             });
 
@@ -476,7 +620,8 @@ export default function mapTilerPicker({ config }) {
                 st.isSearching = false;
                 return;
             }
-            if (!limiters.search()) {
+            const t = limiters.search.try();
+            if (!t.ok) {
                 st.isSearching = false;
                 return;
             }
@@ -492,12 +637,13 @@ export default function mapTilerPicker({ config }) {
 
         selectLocationFromModal(result) {
             const [lng, lat] = result.center || result.geometry.coordinates;
-            if (!limiters.move()) return;
             map.setCenter([lng, lat]);
             map.setZoom(15);
             marker.setLngLat([lng, lat]);
             this.lat = lat;
             this.lng = lng;
+            // commit via throttled + rate-limited writer
+            this.commitCoordinates({ lat, lng });
 
             const st = S();
             st.localSearchResults = [];
@@ -598,7 +744,8 @@ export default function mapTilerPicker({ config }) {
             const position = event.latLng;
             this.lat = position.lat;
             this.lng = position.lng;
-            this.setCoordinates({ lat: this.lat, lng: this.lng });
+            // commit throttled; if limited, jitter + banner will appear
+            this.commitCoordinates({ lat: this.lat, lng: this.lng });
             marker.setLngLat([this.lng, this.lat]);
             map.easeTo({ center: [this.lng, this.lat] });
         },

@@ -93,10 +93,11 @@ class MapTilerField extends Field
         'zoomable' => true,
         'rateLimit' => [
             'interval' => 60000,
-            'search' => 10,
             'geolocate' => 5,
-            'move' => 60,
             'zoom' => 60,
+            'pinMove' => 60,
+            'cameraMove' => 120,
+            'search' => 10,
         ],
     ];
 
@@ -403,10 +404,11 @@ class MapTilerField extends Field
     {
         $defaults = [
             'interval' => 60000,
-            'search' => 10,
             'geolocate' => 5,
-            'move' => 60,
             'zoom' => 60,
+            'pinMove' => 60,
+            'cameraMove' => 120,
+            'search' => 10,
         ];
 
         return array_merge($defaults, $this->evaluate($this->rateLimit));
