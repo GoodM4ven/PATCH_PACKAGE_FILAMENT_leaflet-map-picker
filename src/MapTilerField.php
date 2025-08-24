@@ -68,8 +68,8 @@ class MapTilerField extends Field
         'draggable' => true,
         'clickable' => true,
         'defaultLocation' => [
-            'lat' => 37.9106,
-            'lng' => 40.2365,
+            'lat' => 34.890832,
+            'lng' => 38.542143,
         ],
         'statePath' => '',
         'defaultZoom' => 13,

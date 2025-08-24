@@ -82,7 +82,7 @@ export default function mapTilerPicker({ config }) {
             draggable: true,
             clickable: true,
             defaultZoom: 13,
-            defaultLocation: { lat: 41.0082, lng: 28.9784 }, // ???
+            defaultLocation: { lat: 34.890832, lng: 38.542143 },
             searchLocationButtonLabel: '',
             statePath: '',
             style: 'STREETS',
