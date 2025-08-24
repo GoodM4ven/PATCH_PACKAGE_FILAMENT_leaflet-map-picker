@@ -66,6 +66,12 @@ export default function mapTilerPicker({ config }) {
             }
             // Belt & suspenders: disable/enable zoom gesture handlers during lock
             if (this.mapRef) {
+                // stop any ongoing animations immediately on lock
+                if (locked) {
+                    try {
+                        this.mapRef.stop();
+                    } catch (_) {}
+                }
                 if (locked) {
                     this.mapRef.scrollZoom.disable();
                     this.mapRef.touchZoomRotate.disable();
@@ -212,58 +218,105 @@ export default function mapTilerPicker({ config }) {
             map = new maptilersdk.Map(mapOptions);
             lock.attachMap(map);
 
-            // --- DOM-level interception (pre-empts ScrollZoomHandler) ----------
-            // Why DOM? Map's internal ScrollZoomHandler may act before Map.on('wheel').
-            // We need to preventDefault() at the DOM layer with {passive:false}.
-            map.__zoomTokenConsumed = false; // set true when wheel/pinch consumes the token
-            const canvas = map.getCanvas();
-            let wheelGestureTimer = null;
-            let wheelGestureActive = false;
-            const resetWheelGesture = () => {
-                wheelGestureActive = false;
-                wheelGestureTimer = null;
-            };
+            // --- Early, synchronous rate-limit for ALL zoom inputs ---------------
+            // We intercept at the DOM layer (canvas container) to beat handlers.
+            map.__zoomTokenConsumed = false; // true when a zoom token was taken before zoomend
+            const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
 
-            // Wheel/trackpad zoom
+            // Wheel / trackpad: consume a token on EVERY wheel step; if out, block instantly
             const onWheelDom = (ev) => {
                 if (lock.isLocked()) {
                     ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation?.();
                     return;
                 }
-                if (!wheelGestureActive) {
-                    const t = limiters.zoom.try();
-                    if (!t.ok) {
-                        ev.preventDefault();
-                        lock.lockFor(t.resetMs);
-                        return;
-                    }
-                    wheelGestureActive = true;
-                    map.__zoomTokenConsumed = true; // mark that this zoom gesture already paid a token
+                const t = limiters.zoom.try();
+                if (!t.ok) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation?.();
+                    lock.lockFor(t.resetMs);
+                    return;
                 }
-                // refresh inactivity timer (gesture boundary ~200ms)
-                clearTimeout(wheelGestureTimer);
-                wheelGestureTimer = setTimeout(resetWheelGesture, 200);
+                map.__zoomTokenConsumed = true;
             };
-            canvas.addEventListener('wheel', onWheelDom, { passive: false });
+            containerEl.addEventListener('wheel', onWheelDom, { passive: false, capture: true });
 
-            // Pinch-to-zoom (multi-touch)
+            // Pinch zoom: guard on both touchstart and touchmove for immediate blocking
             const onTouchStartDom = (ev) => {
-                const touches = ev.touches ? ev.touches.length : 0;
-                if (touches >= 2) {
+                const n = ev.touches ? ev.touches.length : 0;
+                if (n >= 2) {
                     if (lock.isLocked()) {
                         ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
                         return;
                     }
                     const t = limiters.zoom.try();
                     if (!t.ok) {
                         ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
                         lock.lockFor(t.resetMs);
                         return;
                     }
                     map.__zoomTokenConsumed = true;
                 }
             };
-            canvas.addEventListener('touchstart', onTouchStartDom, { passive: false });
+            const onTouchMoveDom = (ev) => {
+                const n = ev.touches ? ev.touches.length : 0;
+                if (n >= 2 && lock.isLocked()) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation?.();
+                }
+            };
+            containerEl.addEventListener('touchstart', onTouchStartDom, { passive: false, capture: true });
+            containerEl.addEventListener('touchmove', onTouchMoveDom, { passive: false, capture: true });
+
+            // Double click zoom: pre-empt DoubleClickZoomHandler
+            map.on('dblclick', (e) => {
+                if (lock.isLocked()) {
+                    e.preventDefault();
+                    return;
+                }
+                const t = limiters.zoom.try();
+                if (!t.ok) {
+                    e.preventDefault();
+                    lock.lockFor(t.resetMs);
+                    return;
+                }
+                map.__zoomTokenConsumed = true;
+            });
+
+            // Navigation control buttons: intercept click/mousedown at capture phase
+            const hookNavButtons = () => {
+                const root = this.$refs.mapContainer || containerEl;
+                const inBtn = root.querySelector('.maplibregl-ctrl-zoom-in');
+                const outBtn = root.querySelector('.maplibregl-ctrl-zoom-out');
+                const guard = (ev) => {
+                    if (lock.isLocked()) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                        return;
+                    }
+                    const t = limiters.zoom.try();
+                    if (!t.ok) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                        lock.lockFor(t.resetMs);
+                        return;
+                    }
+                    map.__zoomTokenConsumed = true;
+                };
+                [inBtn, outBtn].forEach((btn) => {
+                    if (!btn) return;
+                    ['mousedown', 'click'].forEach((type) => btn.addEventListener(type, guard, { capture: true }));
+                });
+            };
 
             // Throttled writer (drops to global lock when pin quota is out)
             this.commitCoordinates = throttle((position) => {
@@ -311,6 +364,9 @@ export default function mapTilerPicker({ config }) {
                     }),
                     'top-right'
                 );
+                // Hook the buttons now and also after style mutations
+                hookNavButtons();
+                map.on('styledata', hookNavButtons);
             }
             if (!this.config.rotationable) {
                 map.dragRotate.disable();
@@ -375,6 +431,29 @@ export default function mapTilerPicker({ config }) {
                     lock.lockFor(t.resetMs);
                 } else lastZoom = map.getZoom();
             });
+
+            // Optional: keyboard +/- and = zoom guard (capture at DOM)
+            const onKeyDown = (ev) => {
+                const k = ev.key;
+                if (k === '+' || k === '=' || k === '-') {
+                    if (lock.isLocked()) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                        return;
+                    }
+                    const t = limiters.zoom.try();
+                    if (!t.ok) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                        lock.lockFor(t.resetMs);
+                        return;
+                    }
+                    map.__zoomTokenConsumed = true;
+                }
+            };
+            containerEl.addEventListener('keydown', onKeyDown, { capture: true });
 
             // Camera pan limiter (user pans)
             map.on('dragend', () => {
