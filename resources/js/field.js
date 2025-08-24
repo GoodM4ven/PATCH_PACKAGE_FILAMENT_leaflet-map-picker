@@ -212,39 +212,58 @@ export default function mapTilerPicker({ config }) {
             map = new maptilersdk.Map(mapOptions);
             lock.attachMap(map);
 
-            // --- Rate-limit wheel/trackpad BEFORE ScrollZoomHandler processes it
-            // Take one token per wheel "gesture" and block immediately if out of budget.
-            map.__wheelBudgetActive = false;
-            map.on('wheel', (e) => {
+            // --- DOM-level interception (pre-empts ScrollZoomHandler) ----------
+            // Why DOM? Map's internal ScrollZoomHandler may act before Map.on('wheel').
+            // We need to preventDefault() at the DOM layer with {passive:false}.
+            map.__zoomTokenConsumed = false; // set true when wheel/pinch consumes the token
+            const canvas = map.getCanvas();
+            let wheelGestureTimer = null;
+            let wheelGestureActive = false;
+            const resetWheelGesture = () => {
+                wheelGestureActive = false;
+                wheelGestureTimer = null;
+            };
+
+            // Wheel/trackpad zoom
+            const onWheelDom = (ev) => {
                 if (lock.isLocked()) {
-                    e.preventDefault();
+                    ev.preventDefault();
                     return;
                 }
-                if (!map.__wheelBudgetActive) {
+                if (!wheelGestureActive) {
                     const t = limiters.zoom.try();
                     if (!t.ok) {
-                        e.preventDefault();
+                        ev.preventDefault();
                         lock.lockFor(t.resetMs);
                         return;
                     }
-                    map.__wheelBudgetActive = true;
+                    wheelGestureActive = true;
+                    map.__zoomTokenConsumed = true; // mark that this zoom gesture already paid a token
                 }
-            });
-            // Pinch-to-zoom pre-emption (two-finger)
-            map.on('touchstart', (e) => {
-                const touches = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches.length : 0;
+                // refresh inactivity timer (gesture boundary ~200ms)
+                clearTimeout(wheelGestureTimer);
+                wheelGestureTimer = setTimeout(resetWheelGesture, 200);
+            };
+            canvas.addEventListener('wheel', onWheelDom, { passive: false });
+
+            // Pinch-to-zoom (multi-touch)
+            const onTouchStartDom = (ev) => {
+                const touches = ev.touches ? ev.touches.length : 0;
                 if (touches >= 2) {
                     if (lock.isLocked()) {
-                        e.preventDefault();
+                        ev.preventDefault();
                         return;
                     }
                     const t = limiters.zoom.try();
                     if (!t.ok) {
-                        e.preventDefault();
+                        ev.preventDefault();
                         lock.lockFor(t.resetMs);
+                        return;
                     }
+                    map.__zoomTokenConsumed = true;
                 }
-            });
+            };
+            canvas.addEventListener('touchstart', onTouchStartDom, { passive: false });
 
             // Throttled writer (drops to global lock when pin quota is out)
             this.commitCoordinates = throttle((position) => {
@@ -333,8 +352,13 @@ export default function mapTilerPicker({ config }) {
             let lastZoom = map.getZoom();
             let suppressZoom = false;
             map.on('zoomend', () => {
-                // reset wheel gesture budget at the end of any zoom
-                map.__wheelBudgetActive = false;
+                // If wheel/pinch path already consumed a token for this gesture,
+                // skip the zoom token here (buttons still use this path).
+                if (map.__zoomTokenConsumed) {
+                    map.__zoomTokenConsumed = false;
+                    lastZoom = map.getZoom(); // accept the zoom result
+                    return;
+                }
                 if (suppressZoom) {
                     suppressZoom = false;
                     return;
