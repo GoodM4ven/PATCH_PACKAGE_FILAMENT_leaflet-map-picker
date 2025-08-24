@@ -52,6 +52,14 @@ class MapTilerField extends Field
 
     protected bool|Closure $zoomable = true;
 
+    protected array|Closure $rateLimit = [
+        'interval' => 60000,
+        'search' => 10,
+        'geolocate' => 5,
+        'move' => 60,
+        'zoom' => 60,
+    ];
+
     private int $precision = 8;
 
     protected ?array $customMarker = null;
@@ -83,6 +91,13 @@ class MapTilerField extends Field
             'pinAsWell' => true,
         ],
         'zoomable' => true,
+        'rateLimit' => [
+            'interval' => 60000,
+            'search' => 10,
+            'geolocate' => 5,
+            'move' => 60,
+            'zoom' => 60,
+        ],
     ];
 
     protected function setUp(): void
@@ -377,6 +392,26 @@ class MapTilerField extends Field
         return (bool) $this->evaluate($this->zoomable);
     }
 
+    public function rateLimit(array|Closure $limits): static
+    {
+        $this->rateLimit = $limits;
+
+        return $this;
+    }
+
+    public function getRateLimit(): array
+    {
+        $defaults = [
+            'interval' => 60000,
+            'search' => 10,
+            'geolocate' => 5,
+            'move' => 60,
+            'zoom' => 60,
+        ];
+
+        return array_merge($defaults, $this->evaluate($this->rateLimit));
+    }
+
     /**
      * @throws JsonException
      */
@@ -404,6 +439,7 @@ class MapTilerField extends Field
             'geolocate' => $this->getGeolocate(),
             'zoomable' => $this->getZoomable(),
             'apiKey' => $this->getApiKey(),
+            'rateLimit' => $this->getRateLimit(),
         ]);
     }
 
