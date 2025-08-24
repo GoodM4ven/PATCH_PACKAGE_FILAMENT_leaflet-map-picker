@@ -223,18 +223,81 @@ export default function mapTilerPicker({ config }) {
             // --- Early, synchronous rate-limit for ALL zoom inputs ---------------
             // We intercept at the DOM layer (canvas container) to beat handlers.
             map.__zoomTokenConsumed = false; // true when a zoom token was taken before zoomend
+            map.__panTokenConsumed = false; // true when a pan token was taken at drag start
             const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
+            let lastCenter = map.getCenter();
 
-            // Block starting a pan while locked (mouse/touch/pointer)
-            const blockPanStart = (ev) => {
-                if (!lock.isLocked()) return;
-                ev.preventDefault();
-                ev.stopPropagation();
-                ev.stopImmediatePropagation?.();
+            // ---- CAMERA PAN THROTTLE (mouse & touch) ----
+            // Try cameraMove token *immediately* on pan gesture start.
+            const panStartGuardMouse = (ev) => {
+                // left button only; ignore if modifier keys likely imply another handler
+                if (ev.button !== 0) return;
+                if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+                if (lock.isLocked()) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation?.();
+                    return;
+                }
+                if (!map.__panTokenConsumed) {
+                    const t = limiters.cameraMove.try();
+                    if (!t.ok) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                        lock.lockFor(t.resetMs);
+                        return;
+                    }
+                    map.__panTokenConsumed = true;
+                }
             };
-            containerEl.addEventListener('pointerdown', blockPanStart, { capture: true });
-            containerEl.addEventListener('mousedown', blockPanStart, { capture: true });
-            containerEl.addEventListener('touchstart', blockPanStart, { passive: false, capture: true });
+            const panStartGuardPointer = (ev) => {
+                // treat primary pointer like mouse left
+                if (ev.isPrimary === false) return;
+                if (lock.isLocked()) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation?.();
+                    return;
+                }
+                if (!map.__panTokenConsumed) {
+                    const t = limiters.cameraMove.try();
+                    if (!t.ok) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                        lock.lockFor(t.resetMs);
+                        return;
+                    }
+                    map.__panTokenConsumed = true;
+                }
+            };
+            const panStartGuardTouch = (ev) => {
+                const n = ev.touches ? ev.touches.length : 0;
+                // single-finger => pan gesture (pinch is handled in zoom guards)
+                if (n === 1) {
+                    if (lock.isLocked()) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                        return;
+                    }
+                    if (!map.__panTokenConsumed) {
+                        const t = limiters.cameraMove.try();
+                        if (!t.ok) {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            ev.stopImmediatePropagation?.();
+                            lock.lockFor(t.resetMs);
+                            return;
+                        }
+                        map.__panTokenConsumed = true;
+                    }
+                }
+            };
+            containerEl.addEventListener('mousedown', panStartGuardMouse, { capture: true });
+            containerEl.addEventListener('pointerdown', panStartGuardPointer, { capture: true });
+            containerEl.addEventListener('touchstart', panStartGuardTouch, { passive: false, capture: true });
 
             // Wheel / trackpad: consume a token on EVERY wheel step; if out, block instantly
             const onWheelDom = (ev) => {
@@ -512,23 +575,58 @@ export default function mapTilerPicker({ config }) {
                     }
                     map.__zoomTokenConsumed = true;
                 }
-                // Disable arrow-key panning during lock
+                // Arrow keys pan the camera: throttle at keydown time
                 if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight') {
                     if (lock.isLocked()) {
                         ev.preventDefault();
                         ev.stopPropagation();
                         ev.stopImmediatePropagation?.();
+                        return;
                     }
+                    const t = limiters.cameraMove.try();
+                    if (!t.ok) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        ev.stopImmediatePropagation?.();
+                        lock.lockFor(t.resetMs);
+                        return;
+                    }
+                    // allow event to reach Map's keyboard handler
+                    map.__panTokenConsumed = true; // mark this gesture
+                    // Reset shortly after to allow a subsequent arrow key to count as a new gesture if desired
+                    setTimeout(() => {
+                        map.__panTokenConsumed = false;
+                    }, 250);
                 }
             };
             containerEl.addEventListener('keydown', onKeyDown, { capture: true });
 
-            // Camera pan limiter (user pans) — still enforced when not locked
+            // Fallback: if DragPanHandler slipped through, enforce at dragstart.
+            map.on('dragstart', () => {
+                if (lock.isLocked()) {
+                    try {
+                        map.stop();
+                    } catch (_) {}
+                    map.setCenter(lastCenter);
+                    return;
+                }
+                if (!map.__panTokenConsumed) {
+                    const t = limiters.cameraMove.try();
+                    if (!t.ok) {
+                        try {
+                            map.stop();
+                        } catch (_) {}
+                        map.setCenter(lastCenter);
+                        lock.lockFor(t.resetMs);
+                        return;
+                    }
+                    map.__panTokenConsumed = true;
+                }
+            });
+            // After any drag completes, reset pan token & remember where we ended
             map.on('dragend', () => {
-                if (lock.isLocked()) return; // no panning allowed while locked
-                const t = limiters.cameraMove.try();
-                if (!t.ok) lock.lockFor(t.resetMs);
-                // Side-effects like saveViewport() could be done here if t.ok
+                map.__panTokenConsumed = false;
+                lastCenter = map.getCenter();
             });
             // Optionally count programmatic moves too
             map.on('moveend', (e) => {
@@ -536,6 +634,9 @@ export default function mapTilerPicker({ config }) {
                 if (!e.originalEvent) {
                     const t = limiters.cameraMove.try();
                     if (!t.ok) lock.lockFor(t.resetMs);
+                } else {
+                    // user-driven move finished; remember center
+                    lastCenter = map.getCenter();
                 }
             });
 
