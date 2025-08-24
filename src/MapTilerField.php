@@ -55,7 +55,7 @@ class MapTilerField extends Field
     protected array|Closure $rateLimit = [
         'interval' => 60000,
         'geolocate' => 5,
-        'zoom' => 180,
+        'zoom' => 360,
         'pinMove' => 60,
         'cameraMove' => 120,
         'search' => 10,
@@ -95,7 +95,7 @@ class MapTilerField extends Field
         'rateLimit' => [
             'interval' => 60000,
             'geolocate' => 5,
-            'zoom' => 180,
+            'zoom' => 360,
             'pinMove' => 60,
             'cameraMove' => 120,
             'search' => 10,
@@ -406,7 +406,7 @@ class MapTilerField extends Field
         $defaults = [
             'interval' => 60000,
             'geolocate' => 5,
-            'zoom' => 180,
+            'zoom' => 360,
             'pinMove' => 60,
             'cameraMove' => 120,
             'search' => 10,

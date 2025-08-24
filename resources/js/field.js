@@ -94,7 +94,7 @@ export default function mapTilerPicker({ config }) {
     const interval = limitCfg.interval ?? 60000;
     const limiters = {
         geolocate: createRateLimiter(limitCfg.geolocate ?? 5, interval),
-        zoom: createRateLimiter(limitCfg.zoom ?? 180, interval),
+        zoom: createRateLimiter(limitCfg.zoom ?? 360, interval),
         pinMove: createRateLimiter(limitCfg.pinMove ?? 60, interval),
         cameraMove: createRateLimiter(limitCfg.cameraMove ?? 120, interval),
         search: createRateLimiter(limitCfg.search ?? 10, interval),
@@ -339,7 +339,41 @@ export default function mapTilerPicker({ config }) {
                 else lock.lockFor(t.resetMs);
             }, 300);
 
-            // Geolocate
+            // Geolocate button: intercept FIRST and decide (lock / rate-limit / trigger)
+            const hookGeoButton = (geo) => {
+                const root = this.$refs.mapContainer || containerEl;
+                const btn = root.querySelector('.maplibregl-ctrl-geolocate');
+                if (!btn) return;
+                if (btn.dataset.geoGuarded === '1') return; // avoid duplicate hooks
+                const guard = (ev) => {
+                    // always capture and decide ourselves to avoid default handler
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation?.();
+                    if (lock.isLocked()) return; // locked: do nothing, banner already ticking
+                    const t = limiters.geolocate.try();
+                    if (!t.ok) {
+                        lock.lockFor(t.resetMs);
+                        return;
+                    }
+                    // ok: manually trigger geolocation now
+                    try {
+                        geo.trigger();
+                    } catch (_) {}
+                };
+                btn.addEventListener('click', guard, { capture: true });
+                btn.addEventListener('mousedown', guard, { capture: true });
+                btn.addEventListener(
+                    'keydown',
+                    (ev) => {
+                        if (ev.key === 'Enter' || ev.key === ' ') guard(ev);
+                    },
+                    { capture: true }
+                );
+                btn.dataset.geoGuarded = '1';
+            };
+
+            // Geolocate (enabled, but guarded at the button)
             const geoCfg = this.config.geolocate || { enabled: false, runOnLoad: false, pinAsWell: true };
             if (geoCfg.enabled) {
                 const geo = new maptilersdk.GeolocateControl({
@@ -348,13 +382,13 @@ export default function mapTilerPicker({ config }) {
                     fitBoundsOptions: { maxZoom: 15 },
                 });
                 map.addControl(geo, 'top-right');
+                // Hook the control button so our guard runs BEFORE MapTiler's handler
+                hookGeoButton(geo);
+                // Re-hook after style changes (controls may re-render)
+                map.on('styledata', () => hookGeoButton(geo));
+                // When geolocation succeeds, update pin/center (subject to lock already checked before trigger)
                 geo.on('geolocate', (e) => {
                     if (lock.isLocked()) return;
-                    const t = limiters.geolocate.try();
-                    if (!t.ok) {
-                        lock.lockFor(t.resetMs);
-                        return;
-                    }
                     if (geoCfg.pinAsWell !== false) {
                         const { latitude, longitude } = e.coords;
                         marker.setLngLat([longitude, latitude]);
@@ -364,7 +398,20 @@ export default function mapTilerPicker({ config }) {
                         map.easeTo({ center: [longitude, latitude] });
                     }
                 });
-                if (geoCfg.runOnLoad) map.on('load', () => !lock.isLocked() && geo.trigger());
+                // Optional: guarded auto-trigger on load
+                if (geoCfg.runOnLoad) {
+                    map.on('load', () => {
+                        if (lock.isLocked()) return;
+                        const t = limiters.geolocate.try();
+                        if (!t.ok) {
+                            lock.lockFor(t.resetMs);
+                            return;
+                        }
+                        try {
+                            geo.trigger();
+                        } catch (_) {}
+                    });
+                }
             }
 
             // Navigation control (honour config)
