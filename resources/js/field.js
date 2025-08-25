@@ -417,7 +417,7 @@ export default function mapTilerPicker({ config }) {
                     ev.stopImmediatePropagation?.();
                     if (lock.isLocked()) return; // locked: banner already ticking
                     // 1) rate-limit the button click itself
-                    const clickToken = limiters.geoClick.try();
+                    const clickToken = limiters.geolocate.try();
                     if (!clickToken.ok) {
                         lock.lockFor(clickToken.resetMs);
                         return;
