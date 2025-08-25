@@ -20,11 +20,11 @@ class MapTilerField extends Field
 
     protected string|Closure $height = '400px';
 
-    protected array|Closure|null $defaultLocation = [34.890832, 38.542143];
+    protected array|Closure|null $defaultLocation = null;
 
     protected bool|array|Closure $geolocate = false;
 
-    protected int|Closure $defaultZoom = 13;
+    protected int|Closure|null $defaultZoom = null;
 
     protected bool|Closure $draggable = true;
 
@@ -52,14 +52,9 @@ class MapTilerField extends Field
 
     protected bool|Closure $zoomable = true;
 
-    protected array|Closure $rateLimit = [
-        'interval' => 60000,
-        'geolocate' => 5,
-        'zoom' => 360,
-        'pinMove' => 60,
-        'cameraMove' => 80,
-        'search' => 10,
-    ];
+    protected array|Closure $rateLimit = [];
+
+    protected ?Closure $onRateLimit = null;
 
     private int $precision = 8;
 
@@ -68,12 +63,7 @@ class MapTilerField extends Field
     private array $mapConfig = [
         'draggable' => true,
         'clickable' => true,
-        'defaultLocation' => [
-            'lat' => 34.890832,
-            'lng' => 38.542143,
-        ],
         'statePath' => '',
-        'defaultZoom' => 13,
         'searchLocationButtonLabel' => '',
         'style' => 'STREETS',
         'customTiles' => [],
@@ -86,21 +76,8 @@ class MapTilerField extends Field
         'hash' => false,
         'maxBounds' => null,
         'language' => null,
-        'geolocate' => [
-            'enabled' => false,
-            'runOnLoad' => false,
-            'pinAsWell' => true,
-            'cacheInMs' => 5 * 60 * 1000,
-        ],
         'zoomable' => true,
-        'rateLimit' => [
-            'interval' => 60000,
-            'geolocate' => 5,
-            'zoom' => 360,
-            'pinMove' => 60,
-            'cameraMove' => 80,
-            'search' => 10,
-        ],
+        'controlTranslations' => [],
     ];
 
     protected function setUp(): void
@@ -178,10 +155,12 @@ class MapTilerField extends Field
             }
         }
 
-        return [
-            'lat' => 41.0082,
-            'lng' => 28.9784,
-        ];
+        $default = config('filament-map-tiler.default_location', [
+            'lat' => 34.890832,
+            'lng' => 38.542143,
+        ]);
+
+        return $default;
     }
 
     /**
@@ -225,16 +204,20 @@ class MapTilerField extends Field
     public function getGeolocate(): array
     {
         $value = $this->evaluate($this->geolocate);
+        $defaults = config('filament-map-tiler.geolocate', [
+            'enabled' => false,
+            'runOnLoad' => false,
+            'pinAsWell' => true,
+            'cacheInMs' => 5 * 60 * 1000,
+        ]);
 
-        // Normalize booleans for backward-compat
         if ($value === false) {
-            return ['enabled' => false, 'runOnLoad' => false, 'pinAsWell' => true, 'cacheInMs' => 5 * 60 * 1000];
-        }
-        if ($value === true) {
-            return ['enabled' => true, 'runOnLoad' => false, 'pinAsWell' => true, 'cacheInMs' => 5 * 60 * 1000];
+            return array_merge($defaults, ['enabled' => false]);
         }
 
-        $defaults = ['enabled' => true, 'runOnLoad' => false, 'pinAsWell' => true, 'cacheInMs' => 5 * 60 * 1000];
+        if ($value === true) {
+            return array_merge($defaults, ['enabled' => true]);
+        }
 
         return array_merge($defaults, (array) $value);
     }
@@ -248,7 +231,8 @@ class MapTilerField extends Field
 
     public function getDefaultZoom(): int
     {
-        return $this->evaluate($this->defaultZoom);
+        return $this->evaluate($this->defaultZoom)
+            ?? (int) config('filament-map-tiler.default_zoom', 13);
     }
 
     public function draggable(bool|Closure $draggable = true): static
@@ -388,7 +372,16 @@ class MapTilerField extends Field
 
     public function getLanguage(): ?string
     {
-        return $this->evaluate($this->language);
+        $lang = $this->evaluate($this->language);
+        if (! is_string($lang)) {
+            return null;
+        }
+        $lang = strtolower($lang);
+        if (in_array($lang, ['ar', 'arabic'])) {
+            return 'ar';
+        }
+
+        return $lang;
     }
 
     public function zoomable(bool|Closure $zoomable = true): static
@@ -412,16 +405,46 @@ class MapTilerField extends Field
 
     public function getRateLimit(): array
     {
-        $defaults = [
-            'interval' => 60000,
+        $defaults = config('filament-map-tiler.rate_limit', [
+            'interval' => 60_000,
             'geolocate' => 5,
             'zoom' => 360,
             'pinMove' => 60,
             'cameraMove' => 80,
             'search' => 10,
-        ];
+        ]);
 
-        return array_merge($defaults, $this->evaluate($this->rateLimit));
+        return array_merge($defaults, (array) $this->evaluate($this->rateLimit));
+    }
+
+    public function onRateLimit(Closure $callback): static
+    {
+        $this->onRateLimit = $callback;
+
+        return $this;
+    }
+
+    public function getListeners(?string $event = null): array
+    {
+        return array_merge(parent::getListeners($event), [
+            $this->getRateLimitEvent() => 'handleRateLimit',
+        ]);
+    }
+
+    public function handleRateLimit(array $data): void
+    {
+        if (($data['statePath'] ?? null) !== $this->getStatePath()) {
+            return;
+        }
+
+        if ($this->onRateLimit) {
+            $this->evaluate($this->onRateLimit, $data);
+        }
+    }
+
+    public function getRateLimitEvent(): string
+    {
+        return 'map-tiler-rate-limit';
     }
 
     /**
@@ -452,6 +475,7 @@ class MapTilerField extends Field
             'zoomable' => $this->getZoomable(),
             'apiKey' => $this->getApiKey(),
             'rateLimit' => $this->getRateLimit(),
+            'rateLimitEvent' => $this->getRateLimitEvent(),
             'controlTranslations' => __('filament-map-tiler::filament-map-tiler.controls'),
         ]);
     }

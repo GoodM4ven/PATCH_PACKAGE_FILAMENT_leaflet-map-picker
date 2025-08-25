@@ -14,23 +14,7 @@
         x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-entry', 'goodm4ven/filament-map-tiler') }}"
         x-data="mapTilerEntry({
             location: {{ json_encode($getState()) }},
-            config: {
-                defaultZoom: {{ $getDefaultZoom() }},
-                defaultLocation: {{ json_encode($getDefaultLocation()) }},
-                style: '{{ $getStyle() }}',
-                showTileSwitcher: {{ $getShowTileSwitcher() ? 'true' : 'false' }},
-                customMarker: {{ $getCustomMarker() ? json_encode($getCustomMarker()) : 'null' }},
-                customTiles: {{ json_encode($getCustomTiles()) }},
-                markerIconPath: '{{ $getMarkerIconPath() }}',
-                markerShadowPath: '{{ $getMarkerShadowPath() }}',
-                apiKey: '{{ $getApiKey() }}',
-                rotationable: {{ $getRotationable() ? 'true' : 'false' }},
-                hash: {{ $getHash() ? 'true' : 'false' }},
-                maxBounds: {{ $getMaxBounds() ? json_encode($getMaxBounds()) : 'null' }},
-                language: {{ $getLanguage() ? '\'' . $getLanguage() . '\'' : 'null' }},
-                geolocate: {{ $getGeolocate() ? 'true' : 'false' }},
-                controlTranslations: @js(__('filament-map-tiler::filament-map-tiler.controls'))
-            }
+            config: @js($getMapConfig())
         })"
         x-ignore
     >
