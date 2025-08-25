@@ -408,12 +408,14 @@ export default function mapTilerPicker({ config }) {
                 const btn = root.querySelector('.maplibregl-ctrl-geolocate');
                 if (!btn) return;
                 if (btn.dataset.geoGuarded === '1') return; // avoid duplicate hooks
+                let geoInFlight = false;
                 const guard = (ev) => {
                     // always capture and decide ourselves to avoid default handler
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation?.();
-                    if (lock.isLocked()) return; // locked: do nothing, banner already ticking
+                    if (lock.isLocked()) return; // locked: banner already ticking
+                    if (geoInFlight) return; // ignore while a request is running
                     const t = limiters.geolocate.try();
                     if (!t.ok) {
                         lock.lockFor(t.resetMs);
@@ -421,11 +423,12 @@ export default function mapTilerPicker({ config }) {
                     }
                     // ok: manually trigger geolocation now
                     try {
+                        geoInFlight = true;
                         geo.trigger();
                     } catch (_) {}
                 };
+                // Only handle a single 'click' to avoid double-trigger
                 btn.addEventListener('click', guard, { capture: true });
-                btn.addEventListener('mousedown', guard, { capture: true });
                 btn.addEventListener(
                     'keydown',
                     (ev) => {
@@ -434,6 +437,14 @@ export default function mapTilerPicker({ config }) {
                     { capture: true }
                 );
                 btn.dataset.geoGuarded = '1';
+
+                // Clear in-flight flag on success/fail
+                geo.on('geolocate', () => {
+                    geoInFlight = false;
+                });
+                geo.on('error', () => {
+                    geoInFlight = false;
+                });
             };
 
             // Geolocate (enabled, but guarded at the button)
@@ -629,13 +640,20 @@ export default function mapTilerPicker({ config }) {
                 lastCenter = map.getCenter();
             });
             // Optionally count programmatic moves too
+            // map.on('moveend', (e) => {
+            //     if (lock.isLocked()) return;
+            //     if (!e.originalEvent) {
+            //         const t = limiters.cameraMove.try();
+            //         if (!t.ok) lock.lockFor(t.resetMs);
+            //     } else {
+            //         // user-driven move finished; remember center
+            //         lastCenter = map.getCenter();
+            //     }
+            // });
             map.on('moveend', (e) => {
                 if (lock.isLocked()) return;
-                if (!e.originalEvent) {
-                    const t = limiters.cameraMove.try();
-                    if (!t.ok) lock.lockFor(t.resetMs);
-                } else {
-                    // user-driven move finished; remember center
+                if (e.originalEvent) {
+                    // only count *user-driven* moves
                     lastCenter = map.getCenter();
                 }
             });

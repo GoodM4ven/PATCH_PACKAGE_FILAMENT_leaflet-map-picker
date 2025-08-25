@@ -1,5 +1,5 @@
 {
-    "singleAttributePerLine": true,
+    "singleAttributePerLine": false,
     "singleQuote": true,
     "printWidth": 130,
     "proseWrap": "always",
