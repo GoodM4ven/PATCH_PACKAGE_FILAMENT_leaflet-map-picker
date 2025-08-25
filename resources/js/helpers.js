@@ -1,4 +1,3 @@
-// Backoff helpers -------------------------------------------------------------
 export function backoffDelays(max = 5) {
     // 0.5s, 1s, 2s, 4s, 8s
     return Array.from({ length: max }, (_, i) => 500 * Math.pow(2, i));
@@ -7,7 +6,6 @@ export async function sleep(ms) {
     return new Promise((r) => setTimeout(r, ms));
 }
 
-// Small utils -----------------------------------------------------------------
 export function throttle(fn, wait) {
     let last = 0,
         t = null,
@@ -30,13 +28,13 @@ export function throttle(fn, wait) {
         }
     };
 }
-export function debounce(fn, wait) {
-    let t = null;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), wait);
-    };
-}
+// export function debounce(fn, wait) {
+//     let t = null;
+//     return (...args) => {
+//         clearTimeout(t);
+//         t = setTimeout(() => fn(...args), wait);
+//     };
+// }
 
 export function isTransientNetworkError(err) {
     const msg = (err && (err.message || err.toString())) || '';
@@ -44,7 +42,7 @@ export function isTransientNetworkError(err) {
     return msg.includes('ERR_NETWORK_CHANGED') || msg.includes('Failed to fetch') || msg.includes('NetworkError');
 }
 
-// Token bucket with metadata --------------------------------------------------
+// ? Token bucket with metadata
 export function createRateLimiter(limit, interval = 60000) {
     let tokens = limit;
     let windowStart = Date.now();
@@ -67,7 +65,7 @@ export function createRateLimiter(limit, interval = 60000) {
     };
 }
 
-// UI bits: overlay + banner ---------------------------------------------------
+// ? Locking UI (overlay and banner)
 export function ensureOverlay(container) {
     let shield = container.querySelector('[data-mt-lock-shield]');
     if (!shield) {
@@ -76,7 +74,6 @@ export function ensureOverlay(container) {
         Object.assign(shield.style, {
             position: 'absolute',
             inset: '0',
-            // keep it transparent; we only block pointer events
             background: 'transparent',
             zIndex: 9998,
             display: 'none',
@@ -94,7 +91,7 @@ export function ensureOverlay(container) {
 }
 
 export function ensureCountdownBanner(container) {
-    // Ensure container is positioning context
+    // ? Ensure container is going to hold
     const cs = getComputedStyle(container);
     if (cs.position === 'static') container.style.position = 'relative';
 
@@ -103,7 +100,6 @@ export function ensureCountdownBanner(container) {
     if (!el) {
         el = document.createElement('div');
         el.setAttribute('data-mt-throttle-banner', '1');
-        // style (same vibe as before, but positioned in container)
         Object.assign(el.style, {
             position: 'absolute',
             top: '8px',

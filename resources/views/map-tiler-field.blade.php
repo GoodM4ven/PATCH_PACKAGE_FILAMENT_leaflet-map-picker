@@ -4,15 +4,27 @@
 >
     <div
         wire:ignore
-        x-load
-        x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'goodm4ven/filament-map-tiler'))]"
-        x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'goodm4ven/filament-map-tiler') }}"
         wire:key="{{ $getStatePath() }}"
+        x-ignore
+        x-load
+        x-load-css="
+            [@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'goodm4ven/filament-map-tiler'))]
+        "
+        x-load-src="
+            {{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'goodm4ven/filament-map-tiler') }}
+        "
         x-data="mapTilerPicker({ config: @js($getMapConfig()) })"
         x-on:livewire:update.window="updateMapFromAlpine()"
-        x-ignore
-        x-on:open-modal.window="if ($event.detail.id === 'location-search-modal') { $store.mt.searchQuery = ''; $store.mt.localSearchResults = [] } $el.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'inline-block';"
-        x-on:close-modal.window="$el.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'none';"
+        x-on:open-modal.window="
+            if ($event.detail.id === 'location-search-modal') {
+                $store.mt.searchQuery = '';
+                $store.mt.localSearchResults = []
+            }
+            // $el.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'inline-block';
+        "
+        x-on:close-modal.window="
+            // $el.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'none';
+        "
     >
         <div class="relative mx-auto w-full overflow-hidden rounded-lg bg-gray-50 shadow dark:bg-gray-700">
             <div
@@ -65,7 +77,7 @@
             id="location-search-modal"
             slide-over
             width="md"
-            :displayClasses="'none'"
+            :displayClasses="'-mt-6'"
         >
             <x-slot name="heading">
                 {{ __('filament-map-tiler::filament-map-tiler.search_location') }}
@@ -142,7 +154,7 @@
                     </ul>
                 </div>
 
-                <!-- No results message -->
+                <!-- No results notice -->
                 <div
                     class="rounded-lg bg-gray-50 p-4 text-center dark:bg-gray-700"
                     x-show="$store.mt.searchQuery && $store.mt.searchQuery.length > 2 && $store.mt.localSearchResults.length === 0 && !$store.mt.isSearching"

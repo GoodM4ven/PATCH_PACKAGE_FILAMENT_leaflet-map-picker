@@ -10,6 +10,7 @@ import {
     ensureCountdownBanner,
 } from './helpers.js';
 import { buildStyles, applyLocale } from './map-features.js';
+
 const defaultConfig = {
     draggable: true,
     clickable: true,
@@ -36,13 +37,12 @@ const defaultConfig = {
 
 export default function mapTilerPicker({ config }) {
     const cfg = { ...defaultConfig, ...config };
-    // Internals ---------------------------------------------------------------
+
     let map = null;
     let marker = null;
     let styles = buildStyles(cfg.customTiles);
     let lastFix = null; // { lat, lng, accuracy, timestamp }
 
-    // Global "any rate-limit => lock everything" ------------------------------
     const lock = {
         until: 0,
         tickId: null,
@@ -90,22 +90,22 @@ export default function mapTilerPicker({ config }) {
             } else {
                 this.overlay.hide();
             }
-            // Belt & suspenders: disable/enable zoom gesture handlers during lock
+            // ? disable/enable zoom gesture handlers during lock
             if (this.mapRef) {
-                // stop any ongoing animations immediately on lock
+                // ? stop any ongoing animations immediately on lock
                 if (locked) {
                     try {
                         this.mapRef.stop();
                     } catch (_) {}
                 }
                 if (locked) {
-                    this.mapRef.scrollZoom.disable(); // wheel/trackpad zoom
-                    this.mapRef.touchZoomRotate.disable(); // pinch zoom/rotate
-                    this.mapRef.dragPan.disable(); // ⬅️ disable camera panning while locked
+                    this.mapRef.scrollZoom.disable();
+                    this.mapRef.touchZoomRotate.disable();
+                    this.mapRef.dragPan.disable();
                 } else {
                     this.mapRef.scrollZoom.enable({ around: 'center' });
                     this.mapRef.touchZoomRotate.enable({ around: 'center' });
-                    this.mapRef.dragPan.enable(); // re-enable panning when unlocked
+                    this.mapRef.dragPan.enable();
                 }
             }
         },
@@ -115,7 +115,6 @@ export default function mapTilerPicker({ config }) {
         },
     };
 
-    // Rate limiters -----------------------------------------------------------
     const limitCfg = cfg.rateLimit;
     const interval = limitCfg.interval;
     const limiters = {
@@ -126,17 +125,15 @@ export default function mapTilerPicker({ config }) {
         search: createRateLimiter(limitCfg.search, interval),
     };
 
-    // Alpine store shortcut
+    // ? Alpine store shortcut
     const S = () => Alpine.store('mt');
 
-    // Component API -----------------------------------------------------------
     return {
         lat: null,
         lng: null,
         commitCoordinates: null,
         config: cfg,
 
-        // Lifecycle -------------------------------------------------------------
         init() {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
@@ -147,6 +144,7 @@ export default function mapTilerPicker({ config }) {
                 maptilersdk.config.apiKey = this.config.apiKey;
                 window.__maptilerApiKey = this.config.apiKey;
             }
+
             if (this.config.language) {
                 const lang = maptilersdk.Language[this.config.language] || this.config.language;
                 maptilersdk.config.primaryLanguage = lang;
@@ -158,7 +156,6 @@ export default function mapTilerPicker({ config }) {
         initMap() {
             const initial = { ...this.getCoordinates() };
             const center = [initial.lng, initial.lat];
-
             const mapOptions = {
                 container: this.$refs.mapContainer,
                 style: styles[this.config.style] || maptilersdk.MapStyle.STREETS,
@@ -174,23 +171,21 @@ export default function mapTilerPicker({ config }) {
                 maxBounds: this.config.maxBounds || undefined,
             };
 
-            // Prepare overlay + banner before any locking
+            // ? Prepare locking overlay and banner
             lock.initUI(this.$refs.mapContainer);
 
             map = new maptilersdk.Map(mapOptions);
             lock.attachMap(map);
 
-            // --- Early, synchronous rate-limit for ALL zoom inputs ---------------
-            // We intercept at the DOM layer (canvas container) to beat handlers.
-            map.__zoomTokenConsumed = false; // true when a zoom token was taken before zoomend
-            map.__panTokenConsumed = false; // true when a pan token was taken at drag start
+            // ? Intercepting interactions at the DOM layer to beat handlers
+            map.__zoomTokenConsumed = false; // ? true when a zoom token was taken before zoomend
+            map.__panTokenConsumed = false; // ? true when a pan token was taken at drag start
             const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
             let lastCenter = map.getCenter();
 
-            // ---- CAMERA PAN THROTTLE (mouse & touch) ----
-            // Try cameraMove token *immediately* on pan gesture start.
+            // ? Capture cameraMove token on pan-starting gesture
             const panStartGuardMouse = (ev) => {
-                // left button only; ignore if modifier keys likely imply another handler
+                // ? Left-click button only
                 if (ev.button !== 0) return;
                 if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
                 if (lock.isLocked()) {
@@ -212,7 +207,7 @@ export default function mapTilerPicker({ config }) {
                 }
             };
             const panStartGuardPointer = (ev) => {
-                // treat primary pointer like mouse left
+                // ? Treat primary-pointer as a left-click too
                 if (ev.isPrimary === false) return;
                 if (lock.isLocked()) {
                     ev.preventDefault();
@@ -234,7 +229,7 @@ export default function mapTilerPicker({ config }) {
             };
             const panStartGuardTouch = (ev) => {
                 const n = ev.touches ? ev.touches.length : 0;
-                // single-finger => pan gesture (pinch is handled in zoom guards)
+                // ? Single-finger panning gesture; while pinching is handled in zoom guards
                 if (n === 1) {
                     if (lock.isLocked()) {
                         ev.preventDefault();
@@ -259,7 +254,7 @@ export default function mapTilerPicker({ config }) {
             containerEl.addEventListener('pointerdown', panStartGuardPointer, { capture: true });
             containerEl.addEventListener('touchstart', panStartGuardTouch, { passive: false, capture: true });
 
-            // Wheel / trackpad: consume a token on EVERY wheel step; if out, block instantly
+            // ? Consuming wheel/trackpad token on every wheel step
             const onWheelDom = (ev) => {
                 if (lock.isLocked()) {
                     ev.preventDefault();
@@ -279,7 +274,7 @@ export default function mapTilerPicker({ config }) {
             };
             containerEl.addEventListener('wheel', onWheelDom, { passive: false, capture: true });
 
-            // Pinch zoom: guard on both touchstart and touchmove for immediate blocking
+            // ? Pinching zoom (touchstart and touchmove)
             const onTouchStartDom = (ev) => {
                 const n = ev.touches ? ev.touches.length : 0;
                 if (n >= 2) {
@@ -311,7 +306,7 @@ export default function mapTilerPicker({ config }) {
             containerEl.addEventListener('touchstart', onTouchStartDom, { passive: false, capture: true });
             containerEl.addEventListener('touchmove', onTouchMoveDom, { passive: false, capture: true });
 
-            // Double click zoom: pre-empt DoubleClickZoomHandler
+            // ? Double-clicking zoom
             map.on('dblclick', (e) => {
                 if (lock.isLocked()) {
                     e.preventDefault();
@@ -326,7 +321,7 @@ export default function mapTilerPicker({ config }) {
                 map.__zoomTokenConsumed = true;
             });
 
-            // Navigation control buttons: intercept click/mousedown at capture phase
+            // ? Guards navigation control buttons
             const hookNavButtons = () => {
                 const root = this.$refs.mapContainer || containerEl;
                 const inBtn = root.querySelector('.maplibregl-ctrl-zoom-in');
@@ -354,55 +349,57 @@ export default function mapTilerPicker({ config }) {
                 });
             };
 
-            // Throttled writer (drops to global lock when pin quota is out)
+            // ? Throttled coordinate updates (fallsback to global lock when violated)
             this.commitCoordinates = throttle((position) => {
-                if (lock.isLocked()) return; // locked: do nothing (banner is already running)
+                if (lock.isLocked()) return; // ? Banner is already running
                 const t = limiters.pinMove.try();
                 if (t.ok) this.setCoordinates(position);
                 else lock.lockFor(t.resetMs);
             }, 300);
 
-            // Geolocate button: intercept FIRST and decide (lock / rate-limit / trigger)
+            // ? Guards geolocate button: intercept FIRST, then decide to lock, rate-limit, or trigger
             const hookGeoButton = (geo) => {
                 const root = this.$refs.mapContainer || containerEl;
                 const btn = root.querySelector('.maplibregl-ctrl-geolocate');
                 if (!btn) return;
-                if (btn.dataset.geoGuarded === '1') return; // avoid duplicate hooks
+                if (btn.dataset.geoGuarded === '1') return;
                 let geoInFlight = false;
+
                 const guard = (ev) => {
-                    // always capture and decide ourselves to avoid default handler
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation?.();
-                    if (lock.isLocked()) return; // locked: banner already ticking
-                    // 1) rate-limit the button click itself
+
+                    if (lock.isLocked()) return;
+
+                    // ? Rate-limit the clikcing of the button itself
                     const clickToken = limiters.geolocate.try();
                     if (!clickToken.ok) {
                         lock.lockFor(clickToken.resetMs);
                         return;
                     }
-                    // 2) If we have a recent cached fix, jump instantly and stop here
+                    // ? If we have a recent cached fix, jump instantly and stop here
                     const now = Date.now();
                     const freshFor = (this.config.geolocate && this.config.geolocate.cacheInMs) || Infinity;
                     if (lastFix && now - lastFix.timestamp <= freshFor) {
                         this.jumpTo({ lat: lastFix.lat, lng: lastFix.lng }, { zoom: 15 });
                         return;
                     }
-                    // 3) Otherwise, if a native request is already running, do nothing;
-                    //    we'll let that request update lastFix and the control will move the camera.
+                    // ? If a native request is already running, we'll let that request update lastFix, and move the camera
                     if (geoInFlight) return;
                     const t = limiters.geolocate.try();
                     if (!t.ok) {
                         lock.lockFor(t.resetMs);
                         return;
                     }
-                    // ok: manually trigger geolocation now
+                    // ? Manual triggering of geolocation
                     try {
                         geoInFlight = true;
                         geo.trigger();
                     } catch (_) {}
                 };
-                // Only handle a single 'click' to avoid double-trigger
+
+                // ? Only handle the single 'click' to avoid double-trigger
                 btn.addEventListener('click', guard, { capture: true });
                 btn.addEventListener(
                     'keydown',
@@ -413,16 +410,12 @@ export default function mapTilerPicker({ config }) {
                 );
                 btn.dataset.geoGuarded = '1';
 
-                // Clear in-flight flag on success/fail
-                geo.on('geolocate', () => {
-                    geoInFlight = false;
-                });
-                geo.on('error', () => {
-                    geoInFlight = false;
-                });
+                // ? Clear the flags
+                geo.on('geolocate', () => (geoInFlight = false));
+                geo.on('error', () => (geoInFlight = false));
             };
 
-            // Geolocate (enabled, but guarded at the button)
+            // ? Geolocate button (guarded above)
             const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
                 const geo = new maptilersdk.GeolocateControl({
@@ -431,11 +424,9 @@ export default function mapTilerPicker({ config }) {
                     fitBoundsOptions: { maxZoom: 15 },
                 });
                 map.addControl(geo, 'top-right');
-                // Hook the control button so our guard runs BEFORE MapTiler's handler
+                // ? Hooking to the guard
                 hookGeoButton(geo);
-                // Re-hook after style changes (controls may re-render)
                 map.on('styledata', () => hookGeoButton(geo));
-                // When geolocation succeeds, update pin/center (subject to lock already checked before trigger)
                 geo.on('geolocate', (e) => {
                     if (lock.isLocked()) return;
                     if (geoCfg.pinAsWell !== false) {
@@ -444,17 +435,16 @@ export default function mapTilerPicker({ config }) {
                         this.lat = latitude;
                         this.lng = longitude;
                         this.commitCoordinates({ lat: latitude, lng: longitude });
-                        // map.easeTo({ center: [longitude, latitude] });
                         lastFix = {
                             lat: latitude,
                             lng: longitude,
                             accuracy: typeof accuracy === 'number' ? accuracy : null,
                             timestamp: Date.now(),
                         };
-                        // Let the control handle the camera; we avoid extra animations.
                     }
                 });
-                // Optional: guarded auto-trigger on load
+
+                // ? Optionally auto-trigger geolocation on load
                 if (geoCfg.runOnLoad) {
                     map.on('load', () => {
                         if (lock.isLocked()) return;
@@ -470,7 +460,7 @@ export default function mapTilerPicker({ config }) {
                 }
             }
 
-            // Navigation control (honour config)
+            // ? Navigation control buttons (guarded above)
             if (this.config.rotationable || this.config.zoomable) {
                 map.addControl(
                     new maptilersdk.MaptilerNavigationControl({
@@ -480,7 +470,7 @@ export default function mapTilerPicker({ config }) {
                     }),
                     'top-right'
                 );
-                // Hook the buttons now and also after style mutations
+                // ? Hook to the guards
                 hookNavButtons();
                 map.on('styledata', hookNavButtons);
             }
@@ -496,39 +486,42 @@ export default function mapTilerPicker({ config }) {
                 map.keyboard.disable();
             }
 
+            // ? Applying localization to the labels
             this.applyLocaleIfNeeded();
 
-            // Marker
+            // ? The marker
             const mopts = { draggable: this.config.draggable };
             if (this.config.customMarker) mopts.element = this.createMarkerElement(this.config.customMarker);
             marker = new maptilersdk.Marker(mopts).setLngLat(center).addTo(map);
 
+            // ? Initial positioning
             this.lat = initial.lat;
             this.lng = initial.lng;
             this.setCoordinates(initial);
 
-            // Click to move
-            if (this.config.clickable)
+            // ? Clicking to move
+            if (this.config.clickable) {
                 map.on('click', (e) => {
                     if (lock.isLocked()) return;
                     this.markerMoved({ latLng: e.lngLat });
                 });
-            // Drag pin
-            if (this.config.draggable)
+            }
+            // ? Dragging to move
+            if (this.config.draggable) {
                 marker.on('dragend', () => {
                     if (lock.isLocked()) return;
                     this.markerMoved({ latLng: marker.getLngLat() });
                 });
+            }
 
-            // Zoom limiter
+            // ? Zooming camera
             let lastZoom = map.getZoom();
             let suppressZoom = false;
             map.on('zoomend', () => {
-                // If wheel/pinch path already consumed a token for this gesture,
-                // skip the zoom token here (buttons still use this path).
+                // ? When rate-limited
                 if (map.__zoomTokenConsumed) {
                     map.__zoomTokenConsumed = false;
-                    lastZoom = map.getZoom(); // accept the zoom result
+                    lastZoom = map.getZoom(); // ? Accept the zoom result before locking
                     return;
                 }
                 if (suppressZoom) {
@@ -548,9 +541,10 @@ export default function mapTilerPicker({ config }) {
                 } else lastZoom = map.getZoom();
             });
 
-            // Optional: keyboard +/- and = zoom guard (capture at DOM)
+            // ? Guarding against keyboard buttons as possible interaction tricks
             const onKeyDown = (ev) => {
                 const k = ev.key;
+                // ? Possible zooming buttons
                 if (k === '+' || k === '=' || k === '-') {
                     if (lock.isLocked()) {
                         ev.preventDefault();
@@ -568,7 +562,7 @@ export default function mapTilerPicker({ config }) {
                     }
                     map.__zoomTokenConsumed = true;
                 }
-                // Arrow keys pan the camera: throttle at keydown time
+                // ? Arrow keys for panning the camera
                 if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight') {
                     if (lock.isLocked()) {
                         ev.preventDefault();
@@ -584,17 +578,14 @@ export default function mapTilerPicker({ config }) {
                         lock.lockFor(t.resetMs);
                         return;
                     }
-                    // allow event to reach Map's keyboard handler
-                    map.__panTokenConsumed = true; // mark this gesture
-                    // Reset shortly after to allow a subsequent arrow key to count as a new gesture if desired
-                    setTimeout(() => {
-                        map.__panTokenConsumed = false;
-                    }, 250);
+                    map.__panTokenConsumed = true;
+                    // ? Reset to allow subsequent arrow key to count as a new gesture?
+                    setTimeout(() => (map.__panTokenConsumed = false), 250);
                 }
             };
             containerEl.addEventListener('keydown', onKeyDown, { capture: true });
 
-            // Fallback: if DragPanHandler slipped through, enforce at dragstart.
+            // ? Guard the drag-start event, when pan-start guard doesn't handle things
             map.on('dragstart', () => {
                 if (lock.isLocked()) {
                     try {
@@ -616,36 +607,26 @@ export default function mapTilerPicker({ config }) {
                     map.__panTokenConsumed = true;
                 }
             });
-            // After any drag completes, reset pan token & remember where we ended
+
+            // ? When dragging finishes, reset token and save position
             map.on('dragend', () => {
                 map.__panTokenConsumed = false;
                 lastCenter = map.getCenter();
             });
-            // Optionally count programmatic moves too
-            // map.on('moveend', (e) => {
-            //     if (lock.isLocked()) return;
-            //     if (!e.originalEvent) {
-            //         const t = limiters.cameraMove.try();
-            //         if (!t.ok) lock.lockFor(t.resetMs);
-            //     } else {
-            //         // user-driven move finished; remember center
-            //         lastCenter = map.getCenter();
-            //     }
-            // });
             map.on('moveend', (e) => {
                 if (lock.isLocked()) return;
+                // ? Only counts user-driven moves
                 if (e.originalEvent) {
-                    // only count *user-driven* moves
                     lastCenter = map.getCenter();
                 }
             });
 
-            // Style/locale lifecycle
+            // ? Style and localize
             map.on('load', () => this.applyLocaleIfNeeded());
             map.on('styledata', () => this.applyLocaleIfNeeded());
             map.on('styleimagemissing', () => {}); // silence empty sprite warnings
 
-            // WebGL/context & transient errors recovery
+            // ? WebGL errors recovery
             map.on('webglcontextlost', (e) => {
                 e.preventDefault();
                 this.tryReloadStyleWithBackoff().then((ok) => {
@@ -690,13 +671,27 @@ export default function mapTilerPicker({ config }) {
             } catch (_) {}
             map = null;
             marker = null;
+
             this.initMap();
+
             if (center) {
                 map.setCenter([center.lng, center.lat]);
                 map.setZoom(zoom);
                 marker.setLngLat([center.lng, center.lat]);
             }
             if (styleName) this.setStyle(styleName);
+        },
+
+        setStyle(styleName) {
+            if (lock.isLocked()) return;
+            this.config.style = styleName;
+            const style = styles[styleName] || maptilersdk.MapStyle.STREETS;
+            try {
+                map.setStyle(style);
+            } catch (err) {
+                if (isTransientNetworkError(err)) this.hardRefreshSoon();
+                else console.error('setStyle failed:', err);
+            }
         },
 
         async tryReloadStyleWithBackoff() {
@@ -729,12 +724,14 @@ export default function mapTilerPicker({ config }) {
             this.recreateMapInstance();
         },
 
-        // Locale helpers ---------------------------------------------------------
         applyLocaleIfNeeded() {
             applyLocale(map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer);
         },
 
-        // Search helpers ---------------------------------------------------------
+        // ? =======
+        // ? Search
+        // ? =====
+
         debounceSearch() {
             const st = S();
             if (st.searchTimeout) clearTimeout(st.searchTimeout);
@@ -785,18 +782,6 @@ export default function mapTilerPicker({ config }) {
             this.$dispatch('close-modal', { id: 'location-search-modal' });
         },
 
-        // Misc UI controls -------------------------------------------------------
-        setStyle(styleName) {
-            if (lock.isLocked()) return;
-            this.config.style = styleName;
-            const style = styles[styleName] || maptilersdk.MapStyle.STREETS;
-            try {
-                map.setStyle(style);
-            } catch (err) {
-                if (isTransientNetworkError(err)) this.hardRefreshSoon();
-                else console.error('setStyle failed:', err);
-            }
-        },
         addSearchButton() {
             const self = this;
             class SearchControl {
@@ -825,6 +810,7 @@ export default function mapTilerPicker({ config }) {
             }
             map.addControl(new SearchControl(), 'top-left');
         },
+
         addStyleSwitcherControl() {
             const self = this;
             class TileControl {
@@ -856,6 +842,7 @@ export default function mapTilerPicker({ config }) {
             }
             map.addControl(new TileControl(), 'top-right');
         },
+
         formatStyleName(name) {
             return name
                 .replace(/\./g, ' ')
@@ -864,7 +851,10 @@ export default function mapTilerPicker({ config }) {
                 .trim();
         },
 
-        // Position updates -------------------------------------------------------
+        // ? ============
+        // ? Positioning
+        // ? ==========
+
         jumpTo(position, { zoom } = {}) {
             // programmatic move: we *do not* count this against cameraMove
             marker.setLngLat([position.lng, position.lat]);
@@ -896,7 +886,10 @@ export default function mapTilerPicker({ config }) {
             this.lng = position.lng;
         },
 
-        // Wire bridge ------------------------------------------------------------
+        // ? =================
+        // ? Livewire Updates
+        // ? ===============
+        
         setCoordinates(position) {
             this.$wire.set(this.config.statePath, { lat: position.lat, lng: position.lng });
         },
@@ -908,9 +901,9 @@ export default function mapTilerPicker({ config }) {
             return { lat: location.lat, lng: location.lng };
         },
 
-        // Simple marker element fallback ----------------------------------------
+        // ? A simple marker element fallback
         createMarkerElement(spec) {
-            // spec can be { html, className, style } or string HTML
+            // ? can be { html, className, style } or string HTML
             if (typeof spec === 'string') {
                 const d = document.createElement('div');
                 d.innerHTML = spec.trim();
