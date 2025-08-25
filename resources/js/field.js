@@ -96,7 +96,7 @@ export default function mapTilerPicker({ config }) {
         geolocate: createRateLimiter(limitCfg.geolocate ?? 5, interval),
         zoom: createRateLimiter(limitCfg.zoom ?? 360, interval),
         pinMove: createRateLimiter(limitCfg.pinMove ?? 60, interval),
-        cameraMove: createRateLimiter(limitCfg.cameraMove ?? 120, interval),
+        cameraMove: createRateLimiter(limitCfg.cameraMove ?? 80, interval),
         search: createRateLimiter(limitCfg.search ?? 10, interval),
     };
 

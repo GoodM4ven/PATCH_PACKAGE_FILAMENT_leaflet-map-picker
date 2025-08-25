@@ -57,7 +57,7 @@ class MapTilerField extends Field
         'geolocate' => 5,
         'zoom' => 360,
         'pinMove' => 60,
-        'cameraMove' => 120,
+        'cameraMove' => 80,
         'search' => 10,
     ];
 
@@ -97,7 +97,7 @@ class MapTilerField extends Field
             'geolocate' => 5,
             'zoom' => 360,
             'pinMove' => 60,
-            'cameraMove' => 120,
+            'cameraMove' => 80,
             'search' => 10,
         ],
     ];
@@ -408,7 +408,7 @@ class MapTilerField extends Field
             'geolocate' => 5,
             'zoom' => 360,
             'pinMove' => 60,
-            'cameraMove' => 120,
+            'cameraMove' => 80,
             'search' => 10,
         ];
 
