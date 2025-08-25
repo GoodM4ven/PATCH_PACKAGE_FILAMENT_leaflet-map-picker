@@ -9,12 +9,37 @@ import {
     ensureOverlay,
     ensureCountdownBanner,
 } from './helpers.js';
+import { buildStyles, applyLocale } from './map-features.js';
+const defaultConfig = {
+    draggable: true,
+    clickable: true,
+    defaultZoom: 13,
+    defaultLocation: { lat: 34.890832, lng: 38.542143 },
+    searchLocationButtonLabel: '',
+    statePath: '',
+    style: 'STREETS',
+    customTiles: [],
+    customMarker: null,
+    is_disabled: false,
+    showStyleSwitcher: false,
+    apiKey: '',
+    style_text: 'Map Style',
+    rotationable: true,
+    hash: false,
+    maxBounds: null,
+    language: null,
+    geolocate: {},
+    zoomable: true,
+    rateLimit: {},
+    controlTranslations: {},
+};
 
 export default function mapTilerPicker({ config }) {
+    const cfg = { ...defaultConfig, ...config };
     // Internals ---------------------------------------------------------------
     let map = null;
     let marker = null;
-    let styles = null;
+    let styles = buildStyles(cfg.customTiles);
     let lastFix = null; // { lat, lng, accuracy, timestamp }
 
     // Global "any rate-limit => lock everything" ------------------------------
@@ -91,38 +116,14 @@ export default function mapTilerPicker({ config }) {
     };
 
     // Rate limiters -----------------------------------------------------------
-    const limitCfg = config.rateLimit || {};
-    const interval = limitCfg.interval ?? 60000;
+    const limitCfg = cfg.rateLimit;
+    const interval = limitCfg.interval;
     const limiters = {
-        geolocate: createRateLimiter(limitCfg.geolocate ?? 5, interval),
-        zoom: createRateLimiter(limitCfg.zoom ?? 360, interval),
-        pinMove: createRateLimiter(limitCfg.pinMove ?? 60, interval),
-        cameraMove: createRateLimiter(limitCfg.cameraMove ?? 80, interval),
-        search: createRateLimiter(limitCfg.search ?? 10, interval),
-    };
-
-    // Locales (kept concise) --------------------------------------------------
-    const locales = {
-        ar: {
-            'NavigationControl.ZoomIn': 'تكبير',
-            'NavigationControl.ZoomOut': 'تصغير',
-            'NavigationControl.ResetBearing': 'إعادة الاتجاه إلى الشمال',
-            'NavigationControl.RotateLeft': 'استدارة لليسار',
-            'NavigationControl.RotateRight': 'استدارة لليمين',
-            'NavigationControl.PitchUp': 'رفع الميل',
-            'NavigationControl.PitchDown': 'خفض الميل',
-            'FullscreenControl.Enter': 'دخول ملء الشاشة',
-            'FullscreenControl.Exit': 'خروج من ملء الشاشة',
-            'GeolocateControl.FindMyLocation': 'تحديد موقعي',
-            'GeolocateControl.LocationNotAvailable': 'الموقع غير متاح',
-            'ScaleControl.Meters': 'م',
-            'ScaleControl.Kilometers': 'كم',
-            'ScaleControl.Miles': 'ميل',
-            'ScaleControl.NauticalMiles': 'ميل بحري',
-            'AttributionControl.ToggleAttribution': 'إظهار/إخفاء الإسناد',
-            'TerrainControl.Toggle': 'تفعيل/إلغاء تضاريس ثلاثية الأبعاد',
-            'ProjectionControl.Toggle': 'تبديل الإسقاط',
-        },
+        geolocate: createRateLimiter(limitCfg.geolocate, interval),
+        zoom: createRateLimiter(limitCfg.zoom, interval),
+        pinMove: createRateLimiter(limitCfg.pinMove, interval),
+        cameraMove: createRateLimiter(limitCfg.cameraMove, interval),
+        search: createRateLimiter(limitCfg.search, interval),
     };
 
     // Alpine store shortcut
@@ -133,35 +134,13 @@ export default function mapTilerPicker({ config }) {
         lat: null,
         lng: null,
         commitCoordinates: null,
-        config: {
-            draggable: true,
-            clickable: true,
-            defaultZoom: 13,
-            defaultLocation: { lat: 34.890832, lng: 38.542143 },
-            searchLocationButtonLabel: '',
-            statePath: '',
-            style: 'STREETS',
-            customTiles: [],
-            customMarker: null,
-            is_disabled: false,
-            showStyleSwitcher: false,
-            apiKey: '',
-            style_text: 'Map Style',
-            rotationable: true,
-            hash: false,
-            maxBounds: null,
-            language: null,
-            geolocate: { enabled: false, runOnLoad: false, pinAsWell: true, cacheInMs: 5 * 60 * 1000 },
-            zoomable: true,
-        },
+        config: cfg,
 
         // Lifecycle -------------------------------------------------------------
         init() {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
-
-            this.config = { ...this.config, ...config };
 
             if (!this.config.apiKey) throw new Error('MapTiler API key is required');
             if (!window.__maptilerApiKey || window.__maptilerApiKey !== this.config.apiKey) {
@@ -171,26 +150,6 @@ export default function mapTilerPicker({ config }) {
             if (this.config.language) {
                 const lang = maptilersdk.Language[this.config.language] || this.config.language;
                 maptilersdk.config.primaryLanguage = lang;
-            }
-
-            styles = {
-                STREETS: maptilersdk.MapStyle.STREETS,
-                'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
-                'STREETS.LIGHT': maptilersdk.MapStyle.STREETS.LIGHT,
-                OUTDOOR: maptilersdk.MapStyle.OUTDOOR,
-                WINTER: maptilersdk.MapStyle.WINTER,
-                SATELLITE: maptilersdk.MapStyle.SATELLITE,
-                HYBRID: maptilersdk.MapStyle.HYBRID,
-                DATAVIZ: maptilersdk.MapStyle.DATAVIZ,
-                'DATAVIZ.DARK': maptilersdk.MapStyle.DATAVIZ.DARK,
-                'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
-            };
-            if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
-                styles = { ...styles, ...this.config.customTiles };
-            }
-
-            if (typeof this.config.geolocate === 'boolean') {
-                this.config.geolocate = { enabled: this.config.geolocate, runOnLoad: false, pinAsWell: true, cacheInMs: 5 * 60 * 1000 };
             }
 
             this.initMap();
@@ -424,7 +383,7 @@ export default function mapTilerPicker({ config }) {
                     }
                     // 2) If we have a recent cached fix, jump instantly and stop here
                     const now = Date.now();
-                    const freshFor = (this.config.geolocate && this.config.geolocate.cacheMs) || Infinity;
+                    const freshFor = (this.config.geolocate && this.config.geolocate.cacheInMs) || Infinity;
                     if (lastFix && now - lastFix.timestamp <= freshFor) {
                         this.jumpTo({ lat: lastFix.lat, lng: lastFix.lng }, { zoom: 15 });
                         return;
@@ -464,7 +423,7 @@ export default function mapTilerPicker({ config }) {
             };
 
             // Geolocate (enabled, but guarded at the button)
-            const geoCfg = this.config.geolocate || { enabled: false, runOnLoad: false, pinAsWell: true, cacheInMs: 5 * 60 * 1000 };
+            const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
                 const geo = new maptilersdk.GeolocateControl({
                     trackUserLocation: true,
@@ -772,37 +731,7 @@ export default function mapTilerPicker({ config }) {
 
         // Locale helpers ---------------------------------------------------------
         applyLocaleIfNeeded() {
-            const lang = this.config.language;
-            if (!lang) return;
-            const primary = maptilersdk.Language[lang] || lang;
-            try {
-                map.setLanguage(primary);
-            } catch {}
-            const dict = locales[lang];
-            if (dict) {
-                try {
-                    map.setLocale(dict);
-                } catch {}
-                this.forceArabicTitlesFallback(dict);
-            }
-        },
-        forceArabicTitlesFallback(dict = {}) {
-            const set = (sel, title) => {
-                const el = this.$refs.mapContainer.querySelector(sel);
-                if (el && title) {
-                    el.setAttribute('title', title);
-                    el.setAttribute('aria-label', title);
-                    el.setAttribute('dir', 'rtl');
-                }
-            };
-            set('.maplibregl-ctrl-zoom-in', dict['NavigationControl.ZoomIn'] || 'تكبير');
-            set('.maplibregl-ctrl-zoom-out', dict['NavigationControl.ZoomOut'] || 'تصغير');
-            set('.maplibregl-ctrl-compass', dict['NavigationControl.ResetBearing'] || 'إعادة الاتجاه إلى الشمال');
-            set('.maplibregl-ctrl-pitchtoggle', dict['NavigationControl.PitchUp'] || 'رفع الميل');
-            set('.maplibregl-ctrl-rotate-left', dict['NavigationControl.RotateLeft'] || 'استدارة لليسار');
-            set('.maplibregl-ctrl-rotate-right', dict['NavigationControl.RotateRight'] || 'استدارة لليمين');
-            set('.maplibregl-ctrl-fullscreen', dict['FullscreenControl.Enter'] || 'دخول ملء الشاشة');
-            set('.maplibregl-ctrl-geolocate', dict['GeolocateControl.FindMyLocation'] || 'تحديد موقعي');
+            applyLocale(map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer);
         },
 
         // Search helpers ---------------------------------------------------------
