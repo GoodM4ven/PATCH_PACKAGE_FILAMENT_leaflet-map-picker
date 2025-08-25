@@ -8,8 +8,8 @@ use GoodMaven\FilamentMapTiler\Concerns\HasMapFeatures;
 
 class MapTilerEntry extends Entry
 {
-    use HasMapFeatures;
     use HasExtraAlpineAttributes;
+    use HasMapFeatures;
 
     protected string $view = 'filament-map-tiler::filament-map-tiler-entry';
 
@@ -24,7 +24,9 @@ class MapTilerEntry extends Entry
     {
         return [
             'apiKey' => $this->getApiKey(),
-            'defaultZoomLevel' => $this->getDefaultZoomLevel(),
+            'defaultZoom' => $this->getDefaultZoomLevel(),
+            'minZoomLevel' => $this->getMinZoomLevel(),
+            'maxZoomLevel' => $this->getMaxZoomLevel(),
             'defaultLocation' => $this->getDefaultLocation(),
             'style' => $this->getStyle(),
             'showStyleSwitcher' => $this->getShowStyleSwitcher(),
@@ -33,6 +35,8 @@ class MapTilerEntry extends Entry
             'markerIconPath' => $this->getMarkerIconPath(),
             'markerShadowPath' => $this->getMarkerShadowPath(),
             'rotationable' => $this->getRotationable(),
+            'zoomable' => $this->getZoomable(),
+            'geolocate' => $this->getGeolocate(),
             'hash' => $this->getHash(),
             'maxBounds' => $this->getMaxBounds(),
             'language' => $this->getLanguage(),

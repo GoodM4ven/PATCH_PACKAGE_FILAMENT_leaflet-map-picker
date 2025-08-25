@@ -25,10 +25,11 @@ export default function mapTilerEntry({ location, config }) {
                 style: this.styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center: coords,
                 zoom: this.config.defaultZoom,
-                interactive: false,
+                minZoom: this.config.minZoomLevel ?? undefined,
+                maxZoom: this.config.maxZoomLevel ?? undefined,
+                hash: !!this.config.hash,
+                maxBounds: this.config.maxBounds || undefined,
             };
-            if (this.config.hash) mapOptions.hash = true;
-            if (this.config.maxBounds) mapOptions.maxBounds = this.config.maxBounds;
 
             this.map = new maptilersdk.Map(mapOptions);
 
@@ -41,10 +42,47 @@ export default function mapTilerEntry({ location, config }) {
             if (this.config.showStyleSwitcher) {
                 this.addStyleSwitcherControl();
             }
+            if (this.config.rotationable || this.config.zoomable) {
+                this.map.addControl(
+                    new maptilersdk.MaptilerNavigationControl({
+                        showCompass: this.config.rotationable,
+                        showZoom: this.config.zoomable,
+                        visualizePitch: this.config.rotationable,
+                    }),
+                    'top-right'
+                );
+            }
             if (!this.config.rotationable) {
                 this.map.dragRotate.disable();
                 this.map.touchZoomRotate.disableRotation();
             }
+            if (!this.config.zoomable) {
+                this.map.scrollZoom.disable();
+                this.map.boxZoom.disable();
+                this.map.doubleClickZoom.disable();
+                this.map.touchZoomRotate.disable();
+                this.map.keyboard.disable();
+            }
+
+            const geoCfg = this.config.geolocate;
+            if (geoCfg.enabled) {
+                const geo = new maptilersdk.GeolocateControl({
+                    trackUserLocation: true,
+                    positionOptions: { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
+                    fitBoundsOptions: { maxZoom: 15 },
+                });
+                this.map.addControl(geo, 'top-right');
+                geo.on('geolocate', (e) => {
+                    const { latitude, longitude } = e.coords;
+                    this.map.jumpTo({ center: [longitude, latitude], zoom: Math.max(this.map.getZoom(), 15) });
+                });
+                if (geoCfg.runOnLoad) {
+                    this.map.on('load', () => {
+                        try { geo.trigger(); } catch (_) {}
+                    });
+                }
+            }
+
             this.map.on('load', () => applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer));
             this.map.on('styledata', () => applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer));
         },
