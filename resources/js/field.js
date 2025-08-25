@@ -133,6 +133,8 @@ export default function mapTilerPicker({ config }) {
                 style: styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center,
                 zoom: this.config.defaultZoom,
+                minZoom: this.config.minZoomLevel ?? undefined,
+                maxZoom: this.config.maxZoomLevel ?? undefined,
                 navigationControl: false,
                 geolocateControl: false,
                 terrainControl: false,

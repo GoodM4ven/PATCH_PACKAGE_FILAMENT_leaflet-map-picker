@@ -18,11 +18,13 @@ trait HasMapFeatures
 
     protected int|Closure|null $minZoomLevel = null;
 
-    protected int|Closure|null $initialZoomLevel = null;
-    
+    protected int|Closure|null $defaultZoomLevel = null;
+
     protected int|Closure|null $maxZoomLevel = null;
 
     protected bool|Closure $zoomable = true;
+
+    protected bool|array|Closure $geolocate = false;
 
     protected string $style = 'STREETS';
 
@@ -146,7 +148,7 @@ trait HasMapFeatures
             }
         }
 
-        return $this->getMapTilerConfig('default_location');
+        return $this->getMapTilerConfig('defaults.location');
     }
 
     public function minZoomLevel(null|int|Closure $minZoomLevel): static
@@ -158,21 +160,26 @@ trait HasMapFeatures
 
     public function getMinZoomLevel(): ?int
     {
-        return ($this->evaluate($this->minZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.min')) ?? null;
+        $value = $this->evaluate($this->minZoomLevel);
+        if ($value === null || $value === false) {
+            $value = $this->getMapTilerConfig('defaults.zoom_level.min');
+        }
+
+        return $value === false ? null : (int) $value;
     }
-    
-    public function initialZoomLevel(int|Closure $initialZoomLevel): static
+
+    public function defaultZoomLevel(int|Closure $defaultZoomLevel): static
     {
-        $this->initialZoomLevel = $initialZoomLevel;
+        $this->defaultZoomLevel = $defaultZoomLevel;
 
         return $this;
     }
 
-    public function getInitialZoomLevel(): int
+    public function getDefaultZoomLevel(): int
     {
-        return (int) ($this->evaluate($this->initialZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.initial'));
+        return (int) ($this->evaluate($this->defaultZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.initial'));
     }
-    
+
     public function maxZoomLevel(int|Closure $maxZoomLevel): static
     {
         $this->maxZoomLevel = $maxZoomLevel;
@@ -180,9 +187,14 @@ trait HasMapFeatures
         return $this;
     }
 
-    public function getMaxZoomLevel(): int
+    public function getMaxZoomLevel(): ?int
     {
-        return (int) ($this->evaluate($this->maxZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.max'));
+        $value = $this->evaluate($this->maxZoomLevel);
+        if ($value === null || $value === false) {
+            $value = $this->getMapTilerConfig('defaults.zoom_level.max');
+        }
+
+        return $value === false ? null : (int) $value;
     }
 
     public function zoomable(bool|Closure $zoomable = true): static
@@ -303,5 +315,58 @@ trait HasMapFeatures
     public function getHash(): bool
     {
         return (bool) $this->evaluate($this->hash);
+    }
+
+    /**
+     * Enable geolocation and optionally control behavior.
+     *
+     * Examples:
+     * ->geolocate()                                // enabled, runOnLoad=false, pinAsWell=false
+     * ->geolocate(runOnLoad: true)                 // enabled, trigger on load
+     * ->geolocate(pinAsWell: true)                 // enabled, move pin as well (fields only)
+     * ->geolocate(false)                           // disabled
+     * ->geolocate(['runOnLoad' => true])           // array form
+     */
+    public function geolocate(
+        bool|array $enabledOrSettings = true,
+        ?bool $runOnLoad = null,
+        ?bool $pinAsWell = null,
+        ?int $cacheInMs = 5 * 60 * 1000,
+    ): static {
+        if (is_bool($enabledOrSettings)) {
+            $settings = ['enabled' => $enabledOrSettings];
+        } else {
+            $settings = array_merge(['enabled' => true], $enabledOrSettings);
+        }
+
+        if ($runOnLoad !== null) {
+            $settings['runOnLoad'] = $runOnLoad;
+        }
+        if ($pinAsWell !== null) {
+            $settings['pinAsWell'] = $pinAsWell;
+        }
+        if ($cacheInMs !== null) {
+            $settings['cacheInMs'] = $cacheInMs;
+        }
+
+        $this->geolocate = $settings;
+
+        return $this;
+    }
+
+    public function getGeolocate(): array
+    {
+        $value = $this->evaluate($this->geolocate);
+        $defaults = $this->getMapTilerConfig('defaults.geolocate_options');
+
+        if ($value === false) {
+            return array_merge($defaults, ['enabled' => false]);
+        }
+
+        if ($value === true) {
+            return array_merge($defaults, ['enabled' => true]);
+        }
+
+        return array_merge($defaults, (array) $value);
     }
 }
