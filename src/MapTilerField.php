@@ -18,47 +18,11 @@ class MapTilerField extends Field
 
     protected string $view = 'filament-map-tiler::map-tiler-field';
 
-    protected string|Closure $height = '400px';
-
-    protected array|Closure|null $defaultLocation = null;
+    protected string|Closure|null $searchLocationButtonLabel = 'Search Location';
 
     protected bool|array|Closure $geolocate = false;
 
-    protected int|Closure|null $defaultZoom = null;
-
-    protected bool|Closure $draggable = true;
-
-    protected bool|Closure $clickable = true;
-
-    protected string|Closure|null $searchLocationButtonLabel = 'Search Location';
-
-    protected string|Closure $style = 'STREETS';
-
-    protected string|Closure $apiKey = '';
-
-    protected array|Closure $customTiles = [];
-
-    protected string|Closure $markerIconPath = '';
-
-    protected string|Closure $markerShadowPath = '';
-
-    protected bool $showStyleSwitcher = false;
-
-    protected bool|Closure $hash = false;
-
-    protected array|Closure|null $maxBounds = null;
-
-    protected string|Closure|null $language = null;
-
-    protected bool|Closure $zoomable = true;
-
-    protected array|Closure $rateLimit = [];
-
-    protected ?Closure $onRateLimit = null;
-
     private int $precision = 8;
-
-    protected ?array $customMarker = null;
 
     private array $mapConfig = [
         'draggable' => true,
@@ -204,7 +168,7 @@ class MapTilerField extends Field
     public function getGeolocate(): array
     {
         $value = $this->evaluate($this->geolocate);
-        $defaults = config('filament-map-tiler.geolocate', [
+        $defaults = config('filament-map-tiler.geolocate_options', [
             'enabled' => false,
             'runOnLoad' => false,
             'pinAsWell' => true,
@@ -232,7 +196,7 @@ class MapTilerField extends Field
     public function getDefaultZoom(): int
     {
         return $this->evaluate($this->defaultZoom)
-            ?? (int) config('filament-map-tiler.default_zoom', 13);
+            ?? (int) config('filament-map-tiler.default_zoom_level', 13);
     }
 
     public function draggable(bool|Closure $draggable = true): static
@@ -405,7 +369,7 @@ class MapTilerField extends Field
 
     public function getRateLimit(): array
     {
-        $defaults = config('filament-map-tiler.rate_limit', [
+        $defaults = config('filament-map-tiler.rate_limit_values', [
             'interval' => 60_000,
             'geolocate' => 5,
             'zoom' => 360,

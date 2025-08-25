@@ -16,33 +16,24 @@ class MapTilerEntry extends Component
 
     protected string $view = 'filament-map-tiler::filament-map-tiler-entry';
 
-    protected string|Closure $height = '400px';
-
-    protected int|Closure|null $defaultZoom = null;
-
-    protected array|Closure|null $defaultLocation = null;
-
-    protected bool|array|Closure $geolocate = false;
-
-    protected string $style = 'STREETS';
-
-    protected string $apiKey = '';
-
-    protected bool $showStyleSwitcher = false;
-
-    protected ?array $customMarker = null;
-
-    protected array $customTiles = [];
-
-    protected string|Closure $markerIconPath = '';
-
-    protected string|Closure $markerShadowPath = '';
-
-    protected bool|Closure $hash = false;
-
-    protected array|Closure|null $maxBounds = null;
-
-    protected string|Closure|null $language = null;
+    private array $mapConfig = [
+        'apiKey' => '',
+        'language' => null,
+        'draggable' => true,
+        'clickable' => true,
+        'searchLocationButtonLabel' => '',
+        'style' => 'STREETS',
+        'customTiles' => [],
+        'customMarker' => null,
+        'markerIconPath' => '',
+        'markerShadowPath' => '',
+        'showStyleSwitcher' => false,
+        'rotationable' => true,
+        'hash' => false,
+        'maxBounds' => null,
+        'zoomable' => true,
+        'controlTranslations' => [],
+    ];
 
     protected function setUp(): void
     {
@@ -97,7 +88,7 @@ class MapTilerEntry extends Component
     public function getGeolocate(): array
     {
         $value = $this->evaluate($this->geolocate);
-        $defaults = config('filament-map-tiler.geolocate', [
+        $defaults = config('filament-map-tiler.geolocate_options', [
             'enabled' => false,
             'runOnLoad' => false,
             'pinAsWell' => true,
@@ -146,7 +137,7 @@ class MapTilerEntry extends Component
     public function getDefaultZoom(): int
     {
         return $this->evaluate($this->defaultZoom)
-            ?? (int) config('filament-map-tiler.default_zoom', 13);
+            ?? (int) config('filament-map-tiler.default_zoom_level', 13);
     }
 
     public function getDefaultLocation(): array

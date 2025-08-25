@@ -1,6 +1,7 @@
 <?php
 
 return [
+
     'api_key' => env('FILAMENT_MAPTILER_API_KEY', ''),
 
     'default_location' => [
@@ -8,16 +9,16 @@ return [
         'lng' => 38.542143,
     ],
 
-    'default_zoom' => 13,
+    'default_zoom_level' => 13,
 
-    'geolocate' => [
+    'geolocate_options' => [
         'enabled' => false,
         'runOnLoad' => false,
         'pinAsWell' => true,
         'cacheInMs' => 5 * 60 * 1000,
     ],
 
-    'rate_limit' => [
+    'rate_limit_values' => [
         'interval' => 60_000,
         'geolocate' => 5,
         'zoom' => 360,
@@ -25,4 +26,5 @@ return [
         'cameraMove' => 80,
         'search' => 10,
     ],
+
 ];
