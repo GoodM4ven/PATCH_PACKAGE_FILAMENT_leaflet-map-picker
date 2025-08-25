@@ -15,6 +15,7 @@ export default function mapTilerPicker({ config }) {
     let map = null;
     let marker = null;
     let styles = null;
+    let lastFix = null; // { lat, lng, accuracy, timestamp }
 
     // Global "any rate-limit => lock everything" ------------------------------
     const lock = {
@@ -150,7 +151,7 @@ export default function mapTilerPicker({ config }) {
             hash: false,
             maxBounds: null,
             language: null,
-            geolocate: { enabled: false, runOnLoad: false, pinAsWell: true },
+            geolocate: { enabled: false, runOnLoad: false, pinAsWell: true, cacheInMs: 5 * 60 * 1000 },
             zoomable: true,
         },
 
@@ -415,7 +416,22 @@ export default function mapTilerPicker({ config }) {
                     ev.stopPropagation();
                     ev.stopImmediatePropagation?.();
                     if (lock.isLocked()) return; // locked: banner already ticking
-                    if (geoInFlight) return; // ignore while a request is running
+                    // 1) rate-limit the button click itself
+                    const clickToken = limiters.geoClick.try();
+                    if (!clickToken.ok) {
+                        lock.lockFor(clickToken.resetMs);
+                        return;
+                    }
+                    // 2) If we have a recent cached fix, jump instantly and stop here
+                    const now = Date.now();
+                    const freshFor = (this.config.geolocate && this.config.geolocate.cacheMs) || Infinity;
+                    if (lastFix && now - lastFix.timestamp <= freshFor) {
+                        this.jumpTo({ lat: lastFix.lat, lng: lastFix.lng }, { zoom: 15 });
+                        return;
+                    }
+                    // 3) Otherwise, if a native request is already running, do nothing;
+                    //    we'll let that request update lastFix and the control will move the camera.
+                    if (geoInFlight) return;
                     const t = limiters.geolocate.try();
                     if (!t.ok) {
                         lock.lockFor(t.resetMs);
@@ -469,7 +485,14 @@ export default function mapTilerPicker({ config }) {
                         this.lat = latitude;
                         this.lng = longitude;
                         this.commitCoordinates({ lat: latitude, lng: longitude });
-                        map.easeTo({ center: [longitude, latitude] });
+                        // map.easeTo({ center: [longitude, latitude] });
+                        lastFix = {
+                            lat: latitude,
+                            lng: longitude,
+                            accuracy: typeof accuracy === 'number' ? accuracy : null,
+                            timestamp: Date.now(),
+                        };
+                        // Let the control handle the camera; we avoid extra animations.
                     }
                 });
                 // Optional: guarded auto-trigger on load
@@ -913,6 +936,17 @@ export default function mapTilerPicker({ config }) {
         },
 
         // Position updates -------------------------------------------------------
+        jumpTo(position, { zoom } = {}) {
+            // programmatic move: we *do not* count this against cameraMove
+            marker.setLngLat([position.lng, position.lat]);
+            if (typeof zoom === 'number') {
+                map.jumpTo({ center: [position.lng, position.lat], zoom });
+            } else {
+                map.jumpTo({ center: [position.lng, position.lat] });
+            }
+            this.lat = position.lat;
+            this.lng = position.lng;
+        },
         markerMoved(event) {
             const p = event.latLng;
             this.lat = p.lat;

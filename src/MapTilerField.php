@@ -193,7 +193,12 @@ class MapTilerField extends Field
      * ->geolocate(false)                           // disabled
      * ->geolocate(['runOnLoad' => true])           // array form
      */
-    public function geolocate(bool|array $enabledOrSettings = true, ?bool $runOnLoad = null, ?bool $pinAsWell = null): static
+    public function geolocate(
+        bool|array $enabledOrSettings = true,
+        ?bool $runOnLoad = null,
+        ?bool $pinAsWell = null,
+        ?int $cacheInMs = 5 * 60 * 1000,
+    ): static
     {
         if (is_bool($enabledOrSettings)) {
             $settings = ['enabled' => $enabledOrSettings];
@@ -206,6 +211,9 @@ class MapTilerField extends Field
         }
         if ($pinAsWell !== null) {
             $settings['pinAsWell'] = $pinAsWell;
+        }
+        if ($cacheInMs !== null) {
+            $settings['cacheInMs'] = $cacheInMs;
         }
 
         $this->geolocate = $settings;
