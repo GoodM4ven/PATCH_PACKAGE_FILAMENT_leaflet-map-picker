@@ -16,6 +16,23 @@ export function buildStyles(customTiles = {}) {
     return { ...base, ...customTiles };
 }
 
+export function setupSdk(cfg) {
+    // ? configure MapTiler SDK once
+    if (cfg.language) cfg.language = cfg.language.toLowerCase();
+
+    if (!cfg.apiKey) throw new Error('MapTiler API key is required');
+
+    if (!window.__maptilerApiKey || window.__maptilerApiKey !== cfg.apiKey) {
+        maptilersdk.config.apiKey = cfg.apiKey;
+        window.__maptilerApiKey = cfg.apiKey;
+    }
+
+    if (cfg.language) {
+        const lang = maptilersdk.Language[cfg.language] || cfg.language;
+        maptilersdk.config.primaryLanguage = lang;
+    }
+}
+
 export function applyLocale(map, language, translations = {}, container) {
     if (!language) return;
     const primary = maptilersdk.Language[language] || language;
