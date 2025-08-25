@@ -6,29 +6,13 @@ export default function mapTilerEntry({ location, config }) {
         map: null,
         marker: null,
         location: null,
-        config: {
-            defaultZoom: 13,
-            defaultLocation: { lat: 41.0082, lng: 28.9784 },
-            style: 'STREETS',
-            customTiles: [],
-            customMarker: null,
-            showStyleSwitcher: false,
-            markerIconPath: '',
-            markerShadowPath: '',
-            apiKey: '',
-            rotationable: true,
-            hash: false,
-            maxBounds: null,
-            language: null,
-            geolocate: false,
-            controlTranslations: {},
-        },
+        config,
 
         styles: {},
 
         init() {
             this.location = location;
-            this.config = { ...this.config, ...config };
+            if (this.config.language) this.config.language = this.config.language.toLowerCase();
             if (!this.config.apiKey) {
                 throw new Error('MapTiler API key is required');
             }
@@ -60,7 +44,7 @@ export default function mapTilerEntry({ location, config }) {
 
             this.map = new maptilersdk.Map(mapOptions);
 
-            if (this.config.geolocate) {
+            if (this.config.geolocate?.enabled) {
                 const ctrlContainer = this.map.getContainer().querySelector('.maplibregl-ctrl-top-right');
                 if (ctrlContainer) ctrlContainer.innerHTML = '';
                 const geo = new maptilersdk.GeolocateControl();

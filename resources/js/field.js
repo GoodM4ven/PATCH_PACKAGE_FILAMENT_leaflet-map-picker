@@ -11,32 +11,9 @@ import {
 } from './helpers.js';
 import { buildStyles, applyLocale } from './map-features.js';
 
-const defaultConfig = {
-    draggable: true,
-    clickable: true,
-    defaultZoom: 13,
-    defaultLocation: { lat: 34.890832, lng: 38.542143 },
-    searchLocationButtonLabel: '',
-    statePath: '',
-    style: 'STREETS',
-    customTiles: [],
-    customMarker: null,
-    is_disabled: false,
-    showStyleSwitcher: false,
-    apiKey: '',
-    style_text: 'Map Style',
-    rotationable: true,
-    hash: false,
-    maxBounds: null,
-    language: null,
-    geolocate: {},
-    zoomable: true,
-    rateLimit: {},
-    controlTranslations: {},
-};
-
 export default function mapTilerPicker({ config }) {
-    const cfg = { ...defaultConfig, ...config };
+    const cfg = config;
+    if (cfg.language) cfg.language = cfg.language.toLowerCase();
 
     let map = null;
     let marker = null;
@@ -60,6 +37,12 @@ export default function mapTilerPicker({ config }) {
             this.until = Math.max(this.until, now + ms);
             this.apply(true);
             this.startTicker();
+            if (cfg.rateLimitEvent) {
+                Livewire.dispatch(cfg.rateLimitEvent, {
+                    statePath: cfg.statePath,
+                    resetMs: ms,
+                });
+            }
         },
         attachMap(mp) {
             this.mapRef = mp;

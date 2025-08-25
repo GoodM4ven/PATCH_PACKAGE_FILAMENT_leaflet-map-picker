@@ -18,14 +18,11 @@ class MapTilerEntry extends Component
 
     protected string|Closure $height = '400px';
 
-    protected int $defaultZoom = 13;
+    protected int|Closure|null $defaultZoom = null;
 
-    protected array $defaultLocation = [
-        'lat' => 41.0082,
-        'lng' => 28.9784,
-    ];
+    protected array|Closure|null $defaultLocation = null;
 
-    protected bool|Closure $geolocate = false;
+    protected bool|array|Closure $geolocate = false;
 
     protected string $style = 'STREETS';
 
@@ -90,16 +87,32 @@ class MapTilerEntry extends Component
         return $this;
     }
 
-    public function geolocate(bool|Closure $geolocate = true): static
+    public function geolocate(bool|array|Closure $geolocate = true): static
     {
         $this->geolocate = $geolocate;
 
         return $this;
     }
 
-    public function getGeolocate(): bool
+    public function getGeolocate(): array
     {
-        return (bool) $this->evaluate($this->geolocate);
+        $value = $this->evaluate($this->geolocate);
+        $defaults = config('filament-map-tiler.geolocate', [
+            'enabled' => false,
+            'runOnLoad' => false,
+            'pinAsWell' => true,
+            'cacheInMs' => 5 * 60 * 1000,
+        ]);
+
+        if ($value === false) {
+            return array_merge($defaults, ['enabled' => false]);
+        }
+
+        if ($value === true) {
+            return array_merge($defaults, ['enabled' => true]);
+        }
+
+        return array_merge($defaults, (array) $value);
     }
 
     public function style(string $style): static
@@ -132,12 +145,21 @@ class MapTilerEntry extends Component
 
     public function getDefaultZoom(): int
     {
-        return $this->defaultZoom;
+        return $this->evaluate($this->defaultZoom)
+            ?? (int) config('filament-map-tiler.default_zoom', 13);
     }
 
     public function getDefaultLocation(): array
     {
-        return $this->defaultLocation;
+        $position = $this->evaluate($this->defaultLocation);
+        if (is_array($position) && isset($position['lat'], $position['lng'])) {
+            return $position;
+        }
+
+        return config('filament-map-tiler.default_location', [
+            'lat' => 34.890832,
+            'lng' => 38.542143,
+        ]);
     }
 
     public function getStyle(): string
@@ -193,7 +215,16 @@ class MapTilerEntry extends Component
 
     public function getLanguage(): ?string
     {
-        return $this->evaluate($this->language);
+        $lang = $this->evaluate($this->language);
+        if (! is_string($lang)) {
+            return null;
+        }
+        $lang = strtolower($lang);
+        if (in_array($lang, ['ar', 'arabic'])) {
+            return 'ar';
+        }
+
+        return $lang;
     }
 
     public function markerIconPath(string|Closure $path): static
@@ -242,5 +273,26 @@ class MapTilerEntry extends Component
     public function getHeight(): string
     {
         return (string) $this->evaluate($this->height);
+    }
+
+    public function getMapConfig(): array
+    {
+        return [
+            'defaultZoom' => $this->getDefaultZoom(),
+            'defaultLocation' => $this->getDefaultLocation(),
+            'style' => $this->getStyle(),
+            'showStyleSwitcher' => $this->getShowStyleSwitcher(),
+            'customMarker' => $this->getCustomMarker(),
+            'customTiles' => $this->getCustomTiles(),
+            'markerIconPath' => $this->getMarkerIconPath(),
+            'markerShadowPath' => $this->getMarkerShadowPath(),
+            'apiKey' => $this->getApiKey(),
+            'rotationable' => $this->getRotationable(),
+            'hash' => $this->getHash(),
+            'maxBounds' => $this->getMaxBounds(),
+            'language' => $this->getLanguage(),
+            'geolocate' => $this->getGeolocate(),
+            'controlTranslations' => __('filament-map-tiler::filament-map-tiler.controls'),
+        ];
     }
 }
