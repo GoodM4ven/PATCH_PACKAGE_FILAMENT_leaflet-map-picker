@@ -452,6 +452,7 @@ class MapTilerField extends Field
             'zoomable' => $this->getZoomable(),
             'apiKey' => $this->getApiKey(),
             'rateLimit' => $this->getRateLimit(),
+            'controlTranslations' => __('filament-map-tiler::filament-map-tiler.controls'),
         ]);
     }
 

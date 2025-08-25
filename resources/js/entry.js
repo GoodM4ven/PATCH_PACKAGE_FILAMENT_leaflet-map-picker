@@ -1,4 +1,5 @@
 import * as maptilersdk from '@maptiler/sdk';
+import { buildStyles, applyLocale } from './map-features.js';
 
 export default function mapTilerEntry({ location, config }) {
     return {
@@ -20,20 +21,10 @@ export default function mapTilerEntry({ location, config }) {
             maxBounds: null,
             language: null,
             geolocate: false,
+            controlTranslations: {},
         },
 
-        styles: {
-            STREETS: maptilersdk.MapStyle.STREETS,
-            'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
-            'STREETS.LIGHT': maptilersdk.MapStyle.STREETS.LIGHT,
-            OUTDOOR: maptilersdk.MapStyle.OUTDOOR,
-            WINTER: maptilersdk.MapStyle.WINTER,
-            SATELLITE: maptilersdk.MapStyle.SATELLITE,
-            HYBRID: maptilersdk.MapStyle.HYBRID,
-            DATAVIZ: maptilersdk.MapStyle.DATAVIZ,
-            'DATAVIZ.DARK': maptilersdk.MapStyle.DATAVIZ.DARK,
-            'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
-        },
+        styles: {},
 
         init() {
             this.location = location;
@@ -50,10 +41,7 @@ export default function mapTilerEntry({ location, config }) {
                 maptilersdk.config.primaryLanguage = lang;
             }
 
-            if (this.config.customTiles && Object.keys(this.config.customTiles).length > 0) {
-                this.styles = { ...this.styles, ...this.config.customTiles };
-            }
-
+            this.styles = buildStyles(this.config.customTiles);
             this.initMap();
         },
 
@@ -93,10 +81,8 @@ export default function mapTilerEntry({ location, config }) {
                 this.map.dragRotate.disable();
                 this.map.touchZoomRotate.disableRotation();
             }
-            if (this.config.language) {
-                const lang = maptilersdk.Language[this.config.language] || this.config.language;
-                this.map.on('load', () => this.map.setLanguage(lang));
-            }
+            this.map.on('load', () => applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer));
+            this.map.on('styledata', () => applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer));
         },
 
         createMarkerElement(options) {

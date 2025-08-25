@@ -28,7 +28,8 @@
                 hash: {{ $getHash() ? 'true' : 'false' }},
                 maxBounds: {{ $getMaxBounds() ? json_encode($getMaxBounds()) : 'null' }},
                 language: {{ $getLanguage() ? '\'' . $getLanguage() . '\'' : 'null' }},
-                geolocate: {{ $getGeolocate() ? 'true' : 'false' }}
+                geolocate: {{ $getGeolocate() ? 'true' : 'false' }},
+                controlTranslations: @js(__('filament-map-tiler::filament-map-tiler.controls'))
             }
         })"
         x-ignore
