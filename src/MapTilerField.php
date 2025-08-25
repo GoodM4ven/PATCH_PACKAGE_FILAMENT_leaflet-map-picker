@@ -90,6 +90,7 @@ class MapTilerField extends Field
             'enabled' => false,
             'runOnLoad' => false,
             'pinAsWell' => true,
+            'cacheInMs' => 5 * 60 * 1000,
         ],
         'zoomable' => true,
         'rateLimit' => [
@@ -227,13 +228,13 @@ class MapTilerField extends Field
 
         // Normalize booleans for backward-compat
         if ($value === false) {
-            return ['enabled' => false, 'runOnLoad' => false, 'pinAsWell' => true];
+            return ['enabled' => false, 'runOnLoad' => false, 'pinAsWell' => true, 'cacheInMs' => 5 * 60 * 1000];
         }
         if ($value === true) {
-            return ['enabled' => true, 'runOnLoad' => false, 'pinAsWell' => true];
+            return ['enabled' => true, 'runOnLoad' => false, 'pinAsWell' => true, 'cacheInMs' => 5 * 60 * 1000];
         }
 
-        $defaults = ['enabled' => true, 'runOnLoad' => false, 'pinAsWell' => true];
+        $defaults = ['enabled' => true, 'runOnLoad' => false, 'pinAsWell' => true, 'cacheInMs' => 5 * 60 * 1000];
 
         return array_merge($defaults, (array) $value);
     }

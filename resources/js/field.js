@@ -190,7 +190,7 @@ export default function mapTilerPicker({ config }) {
             }
 
             if (typeof this.config.geolocate === 'boolean') {
-                this.config.geolocate = { enabled: this.config.geolocate, runOnLoad: false, pinAsWell: true };
+                this.config.geolocate = { enabled: this.config.geolocate, runOnLoad: false, pinAsWell: true, cacheInMs: 5 * 60 * 1000 };
             }
 
             this.initMap();
@@ -464,7 +464,7 @@ export default function mapTilerPicker({ config }) {
             };
 
             // Geolocate (enabled, but guarded at the button)
-            const geoCfg = this.config.geolocate || { enabled: false, runOnLoad: false, pinAsWell: true };
+            const geoCfg = this.config.geolocate || { enabled: false, runOnLoad: false, pinAsWell: true, cacheInMs: 5 * 60 * 1000 };
             if (geoCfg.enabled) {
                 const geo = new maptilersdk.GeolocateControl({
                     trackUserLocation: true,
