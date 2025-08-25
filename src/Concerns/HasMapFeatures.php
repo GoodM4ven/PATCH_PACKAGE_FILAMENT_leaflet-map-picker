@@ -3,6 +3,7 @@
 namespace GoodMaven\FilamentMapTiler\Concerns;
 
 use Closure;
+use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
 trait HasMapFeatures
@@ -15,13 +16,19 @@ trait HasMapFeatures
 
     protected array|Closure|null $defaultLocation = null;
 
-    protected int|Closure|null $defaultZoom = null;
+    protected int|Closure|null $minZoomLevel = null;
+
+    protected int|Closure|null $initialZoomLevel = null;
+    
+    protected int|Closure|null $maxZoomLevel = null;
+
+    protected bool|Closure $zoomable = true;
 
     protected string $style = 'STREETS';
 
     protected bool $showStyleSwitcher = false;
 
-    protected array $customTiles = [];
+    protected array $customStyles = [];
 
     protected ?array $customMarker = null;
 
@@ -56,6 +63,28 @@ trait HasMapFeatures
     public function getApiKey(): string
     {
         return (string) $this->evaluate($this->apiKey);
+    }
+
+    protected function ensureValidApiKey(): void
+    {
+        $apiKey = $this->evaluate($this->apiKey) ?: $this->getMapTilerConfig('api_key');
+
+        if (empty($apiKey)) {
+            throw new RuntimeException('MapTiler API key is missing.');
+        }
+
+        if (! app()->environment('testing')) {
+            $cacheKey = 'filament-map-tiler-api-key-'.md5($apiKey);
+            if (! Cache::get($cacheKey)) {
+                $headers = @get_headers("https://api.maptiler.com/maps/streets/style.json?key={$apiKey}");
+                if (! $headers || strpos($headers[0], '200') === false) {
+                    throw new RuntimeException('MapTiler API key is invalid or could not be verified.');
+                }
+                Cache::forever($cacheKey, true);
+            }
+        }
+
+        $this->apiKey = $apiKey;
     }
 
     public function height(string|Closure $height): static
@@ -120,16 +149,52 @@ trait HasMapFeatures
         return $this->getMapTilerConfig('default_location');
     }
 
-    public function defaultZoom(int|Closure $defaultZoom): static
+    public function minZoomLevel(null|int|Closure $minZoomLevel): static
     {
-        $this->defaultZoom = $defaultZoom;
+        $this->minZoomLevel = $minZoomLevel;
 
         return $this;
     }
 
-    public function getDefaultZoom(): int
+    public function getMinZoomLevel(): ?int
     {
-        return (int) ($this->evaluate($this->defaultZoom) ?? $this->getMapTilerConfig('default_zoom_level'));
+        return ($this->evaluate($this->minZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.min')) ?? null;
+    }
+    
+    public function initialZoomLevel(int|Closure $initialZoomLevel): static
+    {
+        $this->initialZoomLevel = $initialZoomLevel;
+
+        return $this;
+    }
+
+    public function getInitialZoomLevel(): int
+    {
+        return (int) ($this->evaluate($this->initialZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.initial'));
+    }
+    
+    public function maxZoomLevel(int|Closure $maxZoomLevel): static
+    {
+        $this->maxZoomLevel = $maxZoomLevel;
+
+        return $this;
+    }
+
+    public function getMaxZoomLevel(): int
+    {
+        return (int) ($this->evaluate($this->maxZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.max'));
+    }
+
+    public function zoomable(bool|Closure $zoomable = true): static
+    {
+        $this->zoomable = $zoomable;
+
+        return $this;
+    }
+
+    public function getZoomable(): bool
+    {
+        return (bool) $this->evaluate($this->zoomable);
     }
 
     public function style(string|Closure $style): static
@@ -156,16 +221,16 @@ trait HasMapFeatures
         return $this->showStyleSwitcher;
     }
 
-    public function customTiles(array|Closure $customTiles): static
+    public function customStyles(array|Closure $customStyles): static
     {
-        $this->customTiles = $customTiles;
+        $this->customStyles = $customStyles;
 
         return $this;
     }
 
-    public function getCustomTiles(): array
+    public function getCustomStyles(): array
     {
-        return (array) $this->evaluate($this->customTiles);
+        return (array) $this->evaluate($this->customStyles);
     }
 
     public function customMarker(?array $customMarker): static

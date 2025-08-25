@@ -4,27 +4,35 @@ return [
 
     'api_key' => env('FILAMENT_MAPTILER_API_KEY', ''),
 
-    'default_location' => [
-        'lat' => 34.890832,
-        'lng' => 38.542143,
-    ],
+    'defaults' => [
 
-    'default_zoom_level' => 13,
+        'location' => [
+            'lat' => 34.890832,
+            'lng' => 38.542143,
+        ],
 
-    'geolocate_options' => [
-        'enabled' => false,
-        'runOnLoad' => false,
-        'pinAsWell' => true,
-        'cacheInMs' => 5 * 60 * 1000,
-    ],
+        'zoom_level' => [
+            'min' => false,
+            'initial' => 13,
+            'max' => false,
+        ],
 
-    'rate_limit_values' => [
-        'interval' => 60_000,
-        'geolocate' => 5,
-        'zoom' => 360,
-        'pinMove' => 60,
-        'cameraMove' => 80,
-        'search' => 10,
+        'geolocate_options' => [
+            'enabled' => false,
+            'runOnLoad' => false,
+            'pinAsWell' => false,
+            'cacheInMs' => 5 * 60 * 1000, // ? 5 minutes
+        ],
+
+        'rate_limit_values' => [
+            'interval' => 60_000, // ? 1 minute
+            'geolocate' => 5,
+            'zoom' => 360,
+            'pinMove' => 40,
+            'cameraMove' => 80,
+            'search' => 10,
+        ],
+
     ],
 
 ];

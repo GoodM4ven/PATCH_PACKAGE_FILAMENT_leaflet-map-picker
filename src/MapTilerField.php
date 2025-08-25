@@ -4,16 +4,12 @@ namespace GoodMaven\FilamentMapTiler;
 
 use Closure;
 use Exception;
-use Filament\Forms\Components\Concerns\CanBeReadOnly;
 use Filament\Forms\Components\Field;
 use GoodMaven\FilamentMapTiler\Concerns\HasMapFeatures;
-use Illuminate\Support\Facades\Cache;
 use JsonException;
-use RuntimeException;
 
 class MapTilerField extends Field
 {
-    use CanBeReadOnly;
     use HasMapFeatures;
 
     protected string $view = 'filament-map-tiler::map-tiler-field';
@@ -23,8 +19,6 @@ class MapTilerField extends Field
     protected bool|array|Closure $geolocate = false;
 
     protected bool|Closure $draggable = true;
-
-    protected bool|Closure $zoomable = true;
 
     protected bool|Closure $clickable = true;
 
@@ -41,26 +35,34 @@ class MapTilerField extends Field
         $this->afterStateHydrated(fn () => $this->ensureValidApiKey());
     }
 
-    protected function ensureValidApiKey(): void
+    public function getMapConfig(): array
     {
-        $apiKey = $this->evaluate($this->apiKey) ?: $this->getMapTilerConfig('api_key');
-
-        if (empty($apiKey)) {
-            throw new RuntimeException('MapTiler API key is missing.');
-        }
-
-        if (! app()->environment('testing')) {
-            $cacheKey = 'filament-map-tiler-api-key-'.md5($apiKey);
-            if (! Cache::get($cacheKey)) {
-                $headers = @get_headers("https://api.maptiler.com/maps/streets/style.json?key={$apiKey}");
-                if (! $headers || strpos($headers[0], '200') === false) {
-                    throw new RuntimeException('MapTiler API key is invalid or could not be verified.');
-                }
-                Cache::forever($cacheKey, true);
-            }
-        }
-
-        $this->apiKey = $apiKey;
+        return [
+            'draggable' => $this->getDraggable(),
+            'clickable' => $this->getClickable(),
+            'defaultLocation' => $this->getDefaultLocation(),
+            'statePath' => $this->getStatePath(),
+            'defaultZoom' => $this->getDefaultZoomLevel(),
+            'searchLocationButtonLabel' => $this->getSearchLocationButtonLabel(),
+            'style' => $this->getStyle(),
+            'customTiles' => $this->getCustomStyles(),
+            'customMarker' => $this->getCustomMarker(),
+            'markerIconPath' => $this->getMarkerIconPath(),
+            'markerShadowPath' => $this->getMarkerShadowPath(),
+            'style_text' => __('filament-map-tiler::filament-map-tiler.map_style'),
+            'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
+            'showStyleSwitcher' => $this->getShowStyleSwitcher(),
+            'rotationable' => $this->getRotationable(),
+            'hash' => $this->getHash(),
+            'maxBounds' => $this->getMaxBounds(),
+            'language' => $this->getLanguage(),
+            'geolocate' => $this->getGeolocate(),
+            'zoomable' => $this->getZoomable(),
+            'apiKey' => $this->getApiKey(),
+            'rateLimit' => $this->getRateLimit(),
+            'rateLimitEvent' => $this->getRateLimitEvent(),
+            'controlTranslations' => __('filament-map-tiler::filament-map-tiler.controls'),
+        ];
     }
 
     /**
@@ -125,11 +127,7 @@ class MapTilerField extends Field
 
     public function getDraggable(): bool
     {
-        if ($this->isDisabled || $this->isReadOnly) {
-            return false;
-        }
-
-        return $this->evaluate($this->draggable);
+        return $this->isDisabled ? false : $this->evaluate($this->draggable);
     }
 
     public function clickable(bool|Closure $clickable = true): static
@@ -141,11 +139,7 @@ class MapTilerField extends Field
 
     public function getClickable(): bool
     {
-        if ($this->isDisabled || $this->isReadOnly) {
-            return false;
-        }
-
-        return $this->evaluate($this->clickable);
+        return $this->isDisabled ? false : $this->evaluate($this->clickable);
     }
 
     public function searchLocationButtonLabel(string|Closure $searchLocationButtonLabel): static
@@ -160,17 +154,7 @@ class MapTilerField extends Field
         return (string) $this->evaluate($this->searchLocationButtonLabel);
     }
 
-    public function zoomable(bool|Closure $zoomable = true): static
-    {
-        $this->zoomable = $zoomable;
-
-        return $this;
-    }
-
-    public function getZoomable(): bool
-    {
-        return (bool) $this->evaluate($this->zoomable);
-    }
+    
 
     public function rateLimit(array|Closure $limits): static
     {
@@ -214,36 +198,6 @@ class MapTilerField extends Field
     public function getRateLimitEvent(): string
     {
         return 'map-tiler-rate-limit';
-    }
-
-    public function getMapConfig(): array
-    {
-        return [
-            'draggable' => $this->getDraggable(),
-            'clickable' => $this->getClickable(),
-            'defaultLocation' => $this->getDefaultLocation(),
-            'statePath' => $this->getStatePath(),
-            'defaultZoom' => $this->getDefaultZoom(),
-            'searchLocationButtonLabel' => $this->getSearchLocationButtonLabel(),
-            'style' => $this->getStyle(),
-            'customTiles' => $this->getCustomTiles(),
-            'customMarker' => $this->getCustomMarker(),
-            'markerIconPath' => $this->getMarkerIconPath(),
-            'markerShadowPath' => $this->getMarkerShadowPath(),
-            'style_text' => __('filament-map-tiler::filament-map-tiler.map_style'),
-            'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
-            'showStyleSwitcher' => $this->getShowStyleSwitcher(),
-            'rotationable' => $this->getRotationable(),
-            'hash' => $this->getHash(),
-            'maxBounds' => $this->getMaxBounds(),
-            'language' => $this->getLanguage(),
-            'geolocate' => $this->getGeolocate(),
-            'zoomable' => $this->getZoomable(),
-            'apiKey' => $this->getApiKey(),
-            'rateLimit' => $this->getRateLimit(),
-            'rateLimitEvent' => $this->getRateLimitEvent(),
-            'controlTranslations' => __('filament-map-tiler::filament-map-tiler.controls'),
-        ];
     }
 
     /**
