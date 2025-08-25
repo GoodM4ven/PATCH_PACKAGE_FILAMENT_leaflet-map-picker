@@ -9,11 +9,11 @@ import {
     ensureOverlay,
     ensureCountdownBanner,
 } from './helpers.js';
-import { buildStyles, applyLocale } from './map-features.js';
+import { buildStyles, applyLocale, setupSdk } from './map-features.js';
 
 export default function mapTilerPicker({ config }) {
     const cfg = config;
-    if (cfg.language) cfg.language = cfg.language.toLowerCase();
+    setupSdk(cfg);
 
     let map = null;
     let marker = null;
@@ -120,17 +120,6 @@ export default function mapTilerPicker({ config }) {
         init() {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
-            }
-
-            if (!this.config.apiKey) throw new Error('MapTiler API key is required');
-            if (!window.__maptilerApiKey || window.__maptilerApiKey !== this.config.apiKey) {
-                maptilersdk.config.apiKey = this.config.apiKey;
-                window.__maptilerApiKey = this.config.apiKey;
-            }
-
-            if (this.config.language) {
-                const lang = maptilersdk.Language[this.config.language] || this.config.language;
-                maptilersdk.config.primaryLanguage = lang;
             }
 
             this.initMap();

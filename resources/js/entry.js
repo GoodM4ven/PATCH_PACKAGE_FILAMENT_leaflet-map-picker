@@ -1,5 +1,5 @@
 import * as maptilersdk from '@maptiler/sdk';
-import { buildStyles, applyLocale } from './map-features.js';
+import { buildStyles, applyLocale, setupSdk } from './map-features.js';
 
 export default function mapTilerEntry({ location, config }) {
     return {
@@ -12,19 +12,7 @@ export default function mapTilerEntry({ location, config }) {
 
         init() {
             this.location = location;
-            if (this.config.language) this.config.language = this.config.language.toLowerCase();
-            if (!this.config.apiKey) {
-                throw new Error('MapTiler API key is required');
-            }
-            if (!window.__maptilerApiKey || window.__maptilerApiKey !== this.config.apiKey) {
-                maptilersdk.config.apiKey = this.config.apiKey;
-                window.__maptilerApiKey = this.config.apiKey;
-            }
-            if (this.config.language) {
-                const lang = maptilersdk.Language[this.config.language] || this.config.language;
-                maptilersdk.config.primaryLanguage = lang;
-            }
-
+            setupSdk(this.config);
             this.styles = buildStyles(this.config.customTiles);
             this.initMap();
         },
@@ -43,14 +31,6 @@ export default function mapTilerEntry({ location, config }) {
             if (this.config.maxBounds) mapOptions.maxBounds = this.config.maxBounds;
 
             this.map = new maptilersdk.Map(mapOptions);
-
-            if (this.config.geolocate?.enabled) {
-                const ctrlContainer = this.map.getContainer().querySelector('.maplibregl-ctrl-top-right');
-                if (ctrlContainer) ctrlContainer.innerHTML = '';
-                const geo = new maptilersdk.GeolocateControl();
-                this.map.addControl(geo, 'top-right');
-                this.map.on('load', () => geo.trigger());
-            }
 
             const markerOptions = {};
             if (this.config.customMarker) {
