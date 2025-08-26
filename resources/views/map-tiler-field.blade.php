@@ -14,7 +14,7 @@
             {{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'goodm4ven/filament-map-tiler') }}
         "
         x-data="mapTilerPicker({ config: @js($getMapConfig()) })"
-        x-on:livewire:update.window="updateMapFromAlpine()"
+        x-on:livewire:update="updateMapFromAlpine()"
         x-on:open-modal.window="
             if ($event.detail.id === 'location-search-modal') {
                 $store.mt.searchQuery = '';

@@ -36,6 +36,7 @@ export default function mapTilerPicker({ config }) {
         lng: null,
         commitCoordinates: null,
         config: cfg,
+        suppressNextLivewireUpdate: false,
 
         init() {
             if (!Alpine.store('mt')) {
@@ -285,9 +286,16 @@ export default function mapTilerPicker({ config }) {
             this.map.easeTo({ center: [this.lng, this.lat] });
         },
         updateMapFromAlpine() {
+            // if this update was caused by our own $wire.set, skip it
+            if (this.suppressNextLivewireUpdate) {
+                this.suppressNextLivewireUpdate = false;
+                return;
+            }
             const location = this.getCoordinates();
             const pos = this.marker.getLngLat();
-            if (location.lat !== pos.lat || location.lng !== pos.lng) this.updateMap(location);
+            if (location.lat !== pos.lat || location.lng !== pos.lng) {
+                this.updateMap(location);
+            }
         },
         updateMap(position) {
             this.marker.setLngLat([position.lng, position.lat]);
@@ -301,25 +309,29 @@ export default function mapTilerPicker({ config }) {
         // ? ===============
 
         setCoordinates(position) {
-            this.$wire.set(this.config.statePath, JSON.stringify({ lat: position.lat, lng: position.lng }));
+            // only set if values actually changed
+            const same = this.lat === position.lat && this.lng === position.lng;
+            if (same) return;
+
+            // mark that the *next* livewire:update is ours
+            this.suppressNextLivewireUpdate = true;
+
+            // Prefer nested sets over stringifying JSON
+            this.$wire.set(`${this.config.statePath}.lat`, position.lat);
+            this.$wire.set(`${this.config.statePath}.lng`, position.lng);
         },
         getCoordinates() {
             let location = this.$wire.get(this.config.statePath);
             if (typeof location === 'string') {
                 try {
                     location = JSON.parse(location);
-                } catch (e) {
+                } catch {
                     location = null;
                 }
             }
-
             if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
-                location = {
-                    lat: this.config.defaultLocation.lat,
-                    lng: this.config.defaultLocation.lng,
-                };
+                location = { ...this.config.defaultLocation };
             }
-
             return { lat: location.lat, lng: location.lng };
         },
     };
