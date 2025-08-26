@@ -11,15 +11,16 @@ import {
     hookInteractionGuards,
     addStyleSwitcherControl,
     attachWebglFailureProtection,
-    applyLocaleIfNeeded,
-    hardRefreshSoon,
-    setStyle,
-    recreateMapInstance,
+    applyLocale,
 } from './map-features.js';
 
 export default function mapTilerPicker({ config }) {
     const cfg = config;
     setupSdk(cfg);
+
+    // Keep SDK objects out of Alpine reactivity
+    let map = null;
+    let marker = null;
 
     const limiters = createLimiters(cfg.rateLimit);
 
@@ -27,16 +28,14 @@ export default function mapTilerPicker({ config }) {
     const S = () => Alpine.store('mt');
 
     return {
-        map: null,
-        marker: null,
         styles: buildStyles(cfg.customStyles),
         lock: createLock(cfg),
+        suppressNextLivewireUpdate: false,
         lastFix: null,
         lat: null,
         lng: null,
         commitCoordinates: null,
         config: cfg,
-        suppressNextLivewireUpdate: false,
 
         init() {
             if (!Alpine.store('mt')) {
@@ -69,13 +68,13 @@ export default function mapTilerPicker({ config }) {
             // ? Prepare locking overlay and banner
             this.lock.initUI(this.$refs.mapContainer);
 
-            this.map = new maptilersdk.Map(mapOptions);
-            this.lock.attachMap(this.map);
+            map = new maptilersdk.Map(mapOptions);
+            this.lock.attachMap(map);
 
-            const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
-            hookInteractionGuards(containerEl, this.map, limiters, this.lock);
+            const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
+            hookInteractionGuards(containerEl, map, limiters, this.lock);
             if (this.config.showStyleSwitcher) {
-                addStyleSwitcherControl(this.map, this.styles, this.config, this.lock, (s) => this.setStyle(s));
+                addStyleSwitcherControl(map, this.styles, this.config, this.lock, (s) => this.setStyle(s));
             }
 
             // ? Throttled coordinate updates (fallsback to global lock when violated)
@@ -90,13 +89,13 @@ export default function mapTilerPicker({ config }) {
             // ? Geolocate button (guarded above)
             const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
-                addGeolocateControl(this.map, this.$refs.mapContainer || containerEl, geoCfg, limiters, this.lock, {
+                addGeolocateControl(map, this.$refs.mapContainer || containerEl, geoCfg, limiters, this.lock, {
                     lastFix: () => this.lastFix,
                     jumpTo: (pos, opts) => this.jumpTo(pos, opts),
                     onGeolocate: (e) => {
                         if (geoCfg.pinAsWell !== false) {
                             const { latitude, longitude, accuracy } = e.coords;
-                            this.marker.setLngLat([longitude, latitude]);
+                            marker.setLngLat([longitude, latitude]);
                             this.lat = latitude;
                             this.lng = longitude;
                             this.commitCoordinates({ lat: latitude, lng: longitude });
@@ -113,7 +112,7 @@ export default function mapTilerPicker({ config }) {
 
             // ? Navigation control buttons (guarded above)
             if (this.config.rotationable || this.config.zoomable) {
-                this.map.addControl(
+                map.addControl(
                     new maptilersdk.MaptilerNavigationControl({
                         showCompass: this.config.rotationable,
                         showZoom: this.config.zoomable,
@@ -122,21 +121,19 @@ export default function mapTilerPicker({ config }) {
                     'top-right'
                 );
                 // ? Hook to the guards
-                hookNavButtons(this.$refs.mapContainer || containerEl, this.map, limiters, this.lock);
-                this.map.on('styledata', () =>
-                    hookNavButtons(this.$refs.mapContainer || containerEl, this.map, limiters, this.lock)
-                );
+                hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, this.lock);
+                map.on('styledata', () => hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, this.lock));
             }
             if (!this.config.rotationable) {
-                this.map.dragRotate.disable();
-                this.map.touchZoomRotate.disableRotation();
+                map.dragRotate.disable();
+                map.touchZoomRotate.disableRotation();
             }
             if (!this.config.zoomable) {
-                this.map.scrollZoom.disable();
-                this.map.boxZoom.disable();
-                this.map.doubleClickZoom.disable();
-                this.map.touchZoomRotate.disable();
-                this.map.keyboard.disable();
+                map.scrollZoom.disable();
+                map.boxZoom.disable();
+                map.doubleClickZoom.disable();
+                map.touchZoomRotate.disable();
+                map.keyboard.disable();
             }
 
             // ? Applying localization to the labels
@@ -145,7 +142,7 @@ export default function mapTilerPicker({ config }) {
             // ? The marker
             const mopts = { draggable: this.config.draggable };
             if (this.config.customMarker) mopts.element = createMarkerElement(this.config.customMarker);
-            this.marker = new maptilersdk.Marker(mopts).setLngLat(center).addTo(this.map);
+            marker = new maptilersdk.Marker(mopts).setLngLat(center).addTo(map);
 
             // ? Initial positioning
             this.lat = initial.lat;
@@ -154,30 +151,62 @@ export default function mapTilerPicker({ config }) {
 
             // ? Clicking to move
             if (this.config.clickable) {
-                this.map.on('click', (e) => {
+                map.on('click', (e) => {
                     if (this.lock.isLocked()) return;
                     this.markerMoved({ latLng: e.lngLat });
                 });
             }
             // ? Dragging to move
             if (this.config.draggable) {
-                this.marker.on('dragend', () => {
+                marker.on('dragend', () => {
                     if (this.lock.isLocked()) return;
-                    this.markerMoved({ latLng: this.marker.getLngLat() });
+                    this.markerMoved({ latLng: marker.getLngLat() });
                 });
             }
 
             // ? Style and localize
-            this.map.on('load', () => this.applyLocaleIfNeeded());
-            this.map.on('styledata', () => this.applyLocaleIfNeeded());
-            this.map.on('styleimagemissing', () => {}); // silence empty sprite warnings
-            attachWebglFailureProtection(this.map, this.styles, this.config, () => this.hardRefreshSoon());
+            map.on('load', () => this.applyLocaleIfNeeded());
+            map.on('styledata', () => this.applyLocaleIfNeeded());
+            map.on('styleimagemissing', () => {}); // silence empty sprite warnings
+            attachWebglFailureProtection(map, this.styles, this.config, () => this.hardRefreshSoon());
         },
 
-        recreateMapInstance,
-        setStyle,
-        hardRefreshSoon,
-        applyLocaleIfNeeded,
+        // Wrapped helpers (use closure vars)
+        applyLocaleIfNeeded() {
+            applyLocale(map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer);
+        },
+        hardRefreshSoon() {
+            if (document.visibilityState !== 'visible') return;
+            if (!navigator.onLine) return;
+            this.recreateMapInstance();
+        },
+        setStyle(styleName) {
+            if (this.lock && this.lock.isLocked && this.lock.isLocked()) return;
+            this.config.style = styleName;
+            const style = this.styles[styleName] || maptilersdk.MapStyle.STREETS;
+            try {
+                map.setStyle(style);
+            } catch (err) {
+                /* ignore transient */
+            }
+        },
+        recreateMapInstance() {
+            const center = marker ? marker.getLngLat() : null;
+            const zoom = map ? map.getZoom() : this.config.defaultZoom;
+            const styleName = this.config.style;
+            try {
+                map && map.remove();
+            } catch (_) {}
+            map = null;
+            marker = null;
+            this.initMap();
+            if (center) {
+                map.setCenter([center.lng, center.lat]);
+                map.setZoom(zoom);
+                marker.setLngLat([center.lng, center.lat]);
+            }
+            if (styleName) this.setStyle(styleName);
+        },
 
         // ? =======
         // ? Search
@@ -221,9 +250,9 @@ export default function mapTilerPicker({ config }) {
         },
         selectLocationFromModal(result) {
             const [lng, lat] = result.center || result.geometry.coordinates;
-            this.map.setCenter([lng, lat]);
-            this.map.setZoom(15);
-            this.marker.setLngLat([lng, lat]);
+            map.setCenter([lng, lat]);
+            map.setZoom(15);
+            marker.setLngLat([lng, lat]);
             this.lat = lat;
             this.lng = lng;
             this.commitCoordinates({ lat, lng });
@@ -268,11 +297,11 @@ export default function mapTilerPicker({ config }) {
 
         jumpTo(position, { zoom } = {}) {
             // programmatic move: we *do not* count this against cameraMove
-            this.marker.setLngLat([position.lng, position.lat]);
+            marker.setLngLat([position.lng, position.lat]);
             if (typeof zoom === 'number') {
-                this.map.jumpTo({ center: [position.lng, position.lat], zoom });
+                map.jumpTo({ center: [position.lng, position.lat], zoom });
             } else {
-                this.map.jumpTo({ center: [position.lng, position.lat] });
+                map.jumpTo({ center: [position.lng, position.lat] });
             }
             this.lat = position.lat;
             this.lng = position.lng;
@@ -282,24 +311,20 @@ export default function mapTilerPicker({ config }) {
             this.lat = p.lat;
             this.lng = p.lng;
             this.commitCoordinates({ lat: this.lat, lng: this.lng });
-            this.marker.setLngLat([this.lng, this.lat]);
-            this.map.easeTo({ center: [this.lng, this.lat] });
+            marker.setLngLat([this.lng, this.lat]);
+            map.easeTo({ center: [this.lng, this.lat] });
         },
         updateMapFromAlpine() {
-            // if this update was caused by our own $wire.set, skip it
+            // If this update was triggered by our own $wire.set, skip it
             if (this.suppressNextLivewireUpdate) {
                 this.suppressNextLivewireUpdate = false;
                 return;
             }
-            const location = this.getCoordinates();
-            const pos = this.marker.getLngLat();
-            if (location.lat !== pos.lat || location.lng !== pos.lng) {
-                this.updateMap(location);
-            }
+            // No-op by default; if you dispatch a custom event with new coords, call updateMap() there.
         },
         updateMap(position) {
-            this.marker.setLngLat([position.lng, position.lat]);
-            this.map.easeTo({ center: [position.lng, position.lat] });
+            marker.setLngLat([position.lng, position.lat]);
+            map.easeTo({ center: [position.lng, position.lat] });
             this.lat = position.lat;
             this.lng = position.lng;
         },
@@ -309,14 +334,11 @@ export default function mapTilerPicker({ config }) {
         // ? ===============
 
         setCoordinates(position) {
-            // only set if values actually changed
             const same = this.lat === position.lat && this.lng === position.lng;
             if (same) return;
-
-            // mark that the *next* livewire:update is ours
+            // mark that the next livewire:update is ours
             this.suppressNextLivewireUpdate = true;
-
-            // Prefer nested sets over stringifying JSON
+            // Prefer nested sets to avoid JSON payload shape issues
             this.$wire.set(`${this.config.statePath}.lat`, position.lat);
             this.$wire.set(`${this.config.statePath}.lng`, position.lng);
         },
