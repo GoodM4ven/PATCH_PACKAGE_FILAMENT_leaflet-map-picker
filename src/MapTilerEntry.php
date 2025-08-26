@@ -11,7 +11,7 @@ class MapTilerEntry extends Entry
     use HasExtraAlpineAttributes;
     use HasMapFeatures;
 
-    protected string $view = 'filament-map-tiler::filament-map-tiler-entry';
+    protected string $view = 'filament-map-tiler::map-tiler-entry';
 
     protected function setUp(): void
     {

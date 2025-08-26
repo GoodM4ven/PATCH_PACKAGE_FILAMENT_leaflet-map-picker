@@ -9,6 +9,7 @@
 >
     <div
         wire:ignore
+        wire:key="{{ $statePath }}"
         x-load
         x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('filament-map-tiler', 'goodm4ven/filament-map-tiler'))]"
         x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-entry', 'goodm4ven/filament-map-tiler') }}"
