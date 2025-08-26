@@ -14,7 +14,7 @@ import {
     applyLocale,
 } from './map-features.js';
 
-export default function mapTilerPicker({ config }) {
+export default function mapTilerPicker({ config, state }) {
     const cfg = config;
     setupSdk(cfg);
 
@@ -30,23 +30,23 @@ export default function mapTilerPicker({ config }) {
     return {
         styles: buildStyles(cfg.customStyles),
         lock: createLock(cfg),
-        suppressNextLivewireUpdate: false,
         lastFix: null,
         lat: null,
         lng: null,
         commitCoordinates: null,
         config: cfg,
+        state,
 
         init() {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
-
+            this.$watch('state', (val) => this.onStateChanged(val));
             this.initMap();
         },
 
         initMap() {
-            const initial = { ...this.getCoordinates() };
+            const initial = this.getInitialCoordinates();
             const center = [initial.lng, initial.lat];
             const mapOptions = {
                 container: this.$refs.mapContainer,
@@ -81,7 +81,7 @@ export default function mapTilerPicker({ config }) {
             this.commitCoordinates = throttle((position) => {
                 if (this.lock.isLocked()) return; // ? Banner is already running
                 const t = limiters.pinMove.try();
-                if (t.ok) this.setCoordinates(position);
+                if (t.ok) this.pushToState(position);
                 else this.lock.lockFor(t.resetMs);
             }, 300);
 
@@ -147,7 +147,7 @@ export default function mapTilerPicker({ config }) {
             // ? Initial positioning
             this.lat = initial.lat;
             this.lng = initial.lng;
-            this.setCoordinates(initial);
+            this.pushToState(initial);
 
             // ? Clicking to move
             if (this.config.clickable) {
@@ -314,14 +314,6 @@ export default function mapTilerPicker({ config }) {
             marker.setLngLat([this.lng, this.lat]);
             map.easeTo({ center: [this.lng, this.lat] });
         },
-        updateMapFromAlpine() {
-            // If this update was triggered by our own $wire.set, skip it
-            if (this.suppressNextLivewireUpdate) {
-                this.suppressNextLivewireUpdate = false;
-                return;
-            }
-            // No-op by default; if you dispatch a custom event with new coords, call updateMap() there.
-        },
         updateMap(position) {
             marker.setLngLat([position.lng, position.lat]);
             map.easeTo({ center: [position.lng, position.lat] });
@@ -333,28 +325,25 @@ export default function mapTilerPicker({ config }) {
         // ? Livewire Updates
         // ? ===============
 
-        setCoordinates(position) {
-            const same = this.lat === position.lat && this.lng === position.lng;
-            if (same) return;
-            // mark that the next livewire:update is ours
-            this.suppressNextLivewireUpdate = true;
-            // Prefer nested sets to avoid JSON payload shape issues
-            this.$wire.set(`${this.config.statePath}.lat`, position.lat);
-            this.$wire.set(`${this.config.statePath}.lng`, position.lng);
+        // ===== Livewire/Filament state bridge (no direct $wire calls) =====
+        onStateChanged(val) {
+            // when server (or another field) changes the state, reflect it on the map
+            if (!val || typeof val.lat !== 'number' || typeof val.lng !== 'number') return;
+            const pos = marker ? marker.getLngLat() : null;
+            if (!pos || pos.lat !== val.lat || pos.lng !== val.lng) {
+                this.updateMap({ lat: val.lat, lng: val.lng });
+            }
         },
-        getCoordinates() {
-            let location = this.$wire.get(this.config.statePath);
-            if (typeof location === 'string') {
-                try {
-                    location = JSON.parse(location);
-                } catch {
-                    location = null;
-                }
+        pushToState(position) {
+            // write to entangled state (this triggers a single Livewire model update honoring modifiers)
+            this.state = { lat: position.lat, lng: position.lng };
+        },
+        getInitialCoordinates() {
+            const v = this.state;
+            if (!v || typeof v.lat !== 'number' || typeof v.lng !== 'number') {
+                return { ...this.config.defaultLocation };
             }
-            if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
-                location = { ...this.config.defaultLocation };
-            }
-            return { lat: location.lat, lng: location.lng };
+            return { lat: v.lat, lng: v.lng };
         },
     };
 }

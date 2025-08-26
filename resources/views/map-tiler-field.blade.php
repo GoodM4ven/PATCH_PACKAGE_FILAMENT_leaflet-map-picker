@@ -13,8 +13,10 @@
         x-load-src="
             {{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'goodm4ven/filament-map-tiler') }}
         "
-        x-data="mapTilerPicker({ config: @js($getMapConfig()) })"
-        x-on:livewire:update="updateMapFromAlpine()"
+        x-data="mapTilerPicker({
+            config: @js($getMapConfig()),
+            state: $wire.{{ $applyStateBindingModifiers(\"$entangle('{$getStatePath()}')\") }}
+        })"
         x-on:open-modal.window="
             if ($event.detail.id === 'location-search-modal') {
                 $store.mt.searchQuery = '';
