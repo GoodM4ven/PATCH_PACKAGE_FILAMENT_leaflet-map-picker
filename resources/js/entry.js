@@ -44,7 +44,7 @@ export default function mapTilerEntry({ location, config }) {
                 container: this.$refs.mapContainer,
                 style: this.styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center: coords,
-                zoom: this.config.defaultZoom,
+                zoom: this.config.initialZoomLevel,
                 minZoom: this.config.minZoomLevel ?? undefined,
                 maxZoom: this.config.maxZoomLevel ?? undefined,
                 hash: !!this.config.hash,
