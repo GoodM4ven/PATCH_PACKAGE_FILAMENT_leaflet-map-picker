@@ -230,7 +230,7 @@ export default function mapTilerPicker({ config }) {
                 st.isSearching = false;
                 return;
             }
-            const t = limiters.search.try();
+            const t = _limiters.search.try();
             if (!t.ok) {
                 st.isSearching = false;
                 _lock.lockFor(t.resetMs);
