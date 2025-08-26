@@ -20,18 +20,19 @@ import {
 export default function mapTilerPicker({ config }) {
     const cfg = config;
     setupSdk(cfg);
-    const styles = buildStyles(cfg.customStyles);
-    const limiters = createLimiters(cfg.rateLimit);
+
+    // keep heavy / circular stuff in closure vars (not exposed to Alpine/Livewire)
+    const _styles = buildStyles(cfg.customStyles);
+    const _limiters = createLimiters(cfg.rateLimit);
+    let _map = null;
+    let _marker = null;
+    let _lock = createLock(cfg);
 
     return {
         lat: null,
         lng: null,
         commitCoordinates: null,
         config: cfg,
-        map: null,
-        marker: null,
-        styles,
-        lock: createLock(cfg),
         lastFix: null,
 
         init() {
@@ -48,7 +49,7 @@ export default function mapTilerPicker({ config }) {
 
             const mapOptions = {
                 container: this.$refs.mapContainer,
-                style: this.styles[this.config.style] || maptilersdk.MapStyle.STREETS,
+                style: _styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center,
                 zoom: this.config.initialZoomLevel,
                 minZoom: this.config.minZoomLevel ?? undefined,
@@ -63,15 +64,15 @@ export default function mapTilerPicker({ config }) {
                 maxBounds: this.config.maxBounds || undefined,
             };
 
-            this.lock.initUI(this.$refs.mapContainer);
-            this.map = new maptilersdk.Map(mapOptions);
-            this.lock.attachMap(this.map);
+            _lock.initUI(this.$refs.mapContainer);
+            _map = new maptilersdk.Map(mapOptions);
+            _lock.attachMap(_map);
 
-            const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
-            hookInteractionGuards(containerEl, this.map, limiters, this.lock);
+            const containerEl = _map.getCanvasContainer?.() || _map.getCanvas?.() || this.$refs.mapContainer;
+            hookInteractionGuards(containerEl, _map, _limiters, _lock);
 
             if (this.config.rotationable || this.config.zoomable) {
-                this.map.addControl(
+                _map.addControl(
                     new maptilersdk.MaptilerNavigationControl({
                         showCompass: this.config.rotationable,
                         showZoom: this.config.zoomable,
@@ -79,28 +80,28 @@ export default function mapTilerPicker({ config }) {
                     }),
                     'top-right'
                 );
-                hookNavButtons(containerEl, this.map, limiters, this.lock);
-                this.map.on('styledata', () => hookNavButtons(containerEl, this.map, limiters, this.lock));
+                hookNavButtons(containerEl, _map, _limiters, _lock);
+                _map.on('styledata', () => hookNavButtons(containerEl, _map, _limiters, _lock));
             }
             if (!this.config.rotationable) {
-                this.map.dragRotate.disable();
-                this.map.touchZoomRotate.disableRotation();
+                _map.dragRotate.disable();
+                _map.touchZoomRotate.disableRotation();
             }
             if (!this.config.zoomable) {
-                this.map.scrollZoom.disable();
-                this.map.boxZoom.disable();
-                this.map.doubleClickZoom.disable();
-                this.map.touchZoomRotate.disable();
-                this.map.keyboard.disable();
+                _map.scrollZoom.disable();
+                _map.boxZoom.disable();
+                _map.doubleClickZoom.disable();
+                _map.touchZoomRotate.disable();
+                _map.keyboard.disable();
             }
 
             const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
-                addGeolocateControl(this.map, containerEl, geoCfg, limiters, this.lock, {
+                addGeolocateControl(_map, containerEl, geoCfg, _limiters, _lock, {
                     onGeolocate: (e) => {
                         const { latitude, longitude, accuracy } = e.coords;
                         if (geoCfg.pinAsWell !== false) {
-                            this.marker.setLngLat([longitude, latitude]);
+                            _marker.setLngLat([longitude, latitude]);
                             this.lat = latitude;
                             this.lng = longitude;
                             this.commitCoordinates({ lat: latitude, lng: longitude });
@@ -118,41 +119,41 @@ export default function mapTilerPicker({ config }) {
             }
 
             if (this.config.showStyleSwitcher) {
-                addStyleSwitcherControl(this.map, this.styles, this.config, this.lock, (s) => this.setStyle(s));
+                addStyleSwitcherControl(_map, _styles, this.config, _lock, (s) => this.setStyle(s));
             }
 
-            this.map.on('load', () => this.applyLocaleIfNeeded());
-            this.map.on('styledata', () => this.applyLocaleIfNeeded());
-            attachWebglFailureProtection(this.map, this.styles, this.config, () => this.hardRefreshSoon());
+            _map.on('load', () => this.applyLocaleIfNeeded());
+            _map.on('styledata', () => this.applyLocaleIfNeeded());
+            attachWebglFailureProtection(_map, _styles, this.config, () => this.hardRefreshSoon());
 
             const markerOptions = { draggable: this.config.draggable };
             if (this.config.customMarker) {
                 markerOptions.element = createMarkerElement(this.config.customMarker);
             }
-            this.marker = new maptilersdk.Marker(markerOptions).setLngLat(center).addTo(this.map);
+            _marker = new maptilersdk.Marker(markerOptions).setLngLat(center).addTo(_map);
 
             this.lat = initial.lat;
             this.lng = initial.lng;
             this.setCoordinates(initial);
 
             if (this.config.clickable) {
-                this.map.on('click', (e) => {
-                    if (this.lock.isLocked()) return;
+                _map.on('click', (e) => {
+                    if (_lock.isLocked()) return;
                     this.markerMoved({ latLng: e.lngLat });
                 });
             }
             if (this.config.draggable) {
-                this.marker.on('dragend', () => {
-                    if (this.lock.isLocked()) return;
-                    this.markerMoved({ latLng: this.marker.getLngLat() });
+                _marker.on('dragend', () => {
+                    if (_lock.isLocked()) return;
+                    this.markerMoved({ latLng: _marker.getLngLat() });
                 });
             }
 
             this.commitCoordinates = throttle((position) => {
-                if (this.lock.isLocked()) return;
-                const t = limiters.pinMove.try();
+                if (_lock.isLocked()) return;
+                const t = _limiters.pinMove.try();
                 if (t.ok) this.setCoordinates(position);
-                else this.lock.lockFor(t.resetMs);
+                else _lock.lockFor(t.resetMs);
             }, 300);
 
             this.addSearchButton();
