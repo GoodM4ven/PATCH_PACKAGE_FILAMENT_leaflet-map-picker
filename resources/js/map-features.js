@@ -528,9 +528,9 @@ export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
             this.map = mp;
             this.container = document.createElement('div');
             this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
-            if (cfg.style_switcher_label) {
+            if (cfg.styleSwitcherLabel) {
                 const label = document.createElement('label');
-                label.textContent = cfg.style_switcher_label;
+                label.textContent = cfg.styleSwitcherLabel;
                 this.container.appendChild(label);
             }
             const select = document.createElement('select');
@@ -658,7 +658,7 @@ export function setStyle(styleName) {
 
 export function recreateMapInstance() {
     const center = this.marker ? this.marker.getLngLat() : null;
-    const zoom = this.map ? this.map.getZoom() : this.config.defaultZoom;
+    const zoom = this.map ? this.map.getZoom() : this.config.initialZoomLevel;
     const styleName = this.config.style;
     try {
         this.map && this.map.remove();
