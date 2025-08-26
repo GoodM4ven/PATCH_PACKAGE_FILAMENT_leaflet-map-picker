@@ -6,7 +6,7 @@ import {
     createLock,
     createLimiters,
     createMarkerElement,
-    hookGeolocateButton,
+    addGeolocateControl,
     hookNavButtons,
     hookInteractionGuards,
     addStyleSwitcherControl,
@@ -89,55 +89,32 @@ export default function mapTilerPicker({ config }) {
             // ? Geolocate button (guarded above)
             const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
-                const geo = new maptilersdk.GeolocateControl({
-                    trackUserLocation: true,
-                    positionOptions: { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
-                    fitBoundsOptions: { maxZoom: 15 },
-                });
-                this.map.addControl(geo, 'top-right');
-                // ? Hooking to the guard
-                const geoOpts = {
-                    container: this.$refs.mapContainer || containerEl,
-                    geo,
+                addGeolocateControl(
+                    this.map,
+                    this.$refs.mapContainer || containerEl,
+                    geoCfg,
                     limiters,
-                    lock: this.lock,
-                    lastFix: () => this.lastFix,
-                    jumpTo: (pos, opts) => this.jumpTo(pos, opts),
-                    cacheMs: (this.config.geolocate && this.config.geolocate.cacheInMs) || Infinity,
-                };
-                hookGeolocateButton(geoOpts);
-                this.map.on('styledata', () => hookGeolocateButton(geoOpts));
-                geo.on('geolocate', (e) => {
-                    if (this.lock.isLocked()) return;
-                    if (geoCfg.pinAsWell !== false) {
-                        const { latitude, longitude } = e.coords;
-                        this.marker.setLngLat([longitude, latitude]);
-                        this.lat = latitude;
-                        this.lng = longitude;
-                        this.commitCoordinates({ lat: latitude, lng: longitude });
-                        this.lastFix = {
-                            lat: latitude,
-                            lng: longitude,
-                            accuracy: typeof accuracy === 'number' ? accuracy : null,
-                            timestamp: Date.now(),
-                        };
+                    this.lock,
+                    {
+                        lastFix: () => this.lastFix,
+                        jumpTo: (pos, opts) => this.jumpTo(pos, opts),
+                        onGeolocate: (e) => {
+                            if (geoCfg.pinAsWell !== false) {
+                                const { latitude, longitude, accuracy } = e.coords;
+                                this.marker.setLngLat([longitude, latitude]);
+                                this.lat = latitude;
+                                this.lng = longitude;
+                                this.commitCoordinates({ lat: latitude, lng: longitude });
+                                this.lastFix = {
+                                    lat: latitude,
+                                    lng: longitude,
+                                    accuracy: typeof accuracy === 'number' ? accuracy : null,
+                                    timestamp: Date.now(),
+                                };
+                            }
+                        },
                     }
-                });
-
-                // ? Optionally auto-trigger geolocation on load
-                if (geoCfg.runOnLoad) {
-                    this.map.on('load', () => {
-                        if (this.lock.isLocked()) return;
-                        const t = limiters.geolocate.try();
-                        if (!t.ok) {
-                            this.lock.lockFor(t.resetMs);
-                            return;
-                        }
-                        try {
-                            geo.trigger();
-                        } catch (_) {}
-                    });
-                }
+                );
             }
 
             // ? Navigation control buttons (guarded above)
