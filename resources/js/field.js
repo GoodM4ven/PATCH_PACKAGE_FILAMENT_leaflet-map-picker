@@ -15,13 +15,14 @@ import {
 } from './map-features.js';
 
 export default function mapTilerPicker({ config, state }) {
-    const cfg = config;
+    // ---- keep all heavy objects OUT of Alpine reactivity
+    const cfg = { ...config }; // shallow copy only primitives you need
     setupSdk(cfg);
 
-    // Keep SDK objects out of Alpine reactivity
     let map = null;
     let marker = null;
     const lock = createLock(cfg);
+    const styles = buildStyles(cfg.customStyles); // MapStyle objects stay here (not on `this`)
 
     const limiters = createLimiters(cfg.rateLimit);
 
@@ -29,13 +30,13 @@ export default function mapTilerPicker({ config, state }) {
     const S = () => Alpine.store('mt');
 
     return {
-        styles: buildStyles(cfg.customStyles),
+        // reactive data: primitives only (+ entangled proxy)
         lastFix: null,
         lat: null,
         lng: null,
         commitCoordinates: null,
-        config: cfg,
-        state, // entangled proxy – do NOT replace it, only set its props
+        styleName: cfg.style, // expose only the current style string
+        state, // entangled proxy – do NOT replace it
 
         init() {
             if (!Alpine.store('mt')) {
@@ -52,19 +53,19 @@ export default function mapTilerPicker({ config, state }) {
             const center = [initial.lng, initial.lat];
             const mapOptions = {
                 container: this.$refs.mapContainer,
-                style: this.styles[this.config.style] || maptilersdk.MapStyle.STREETS,
+                style: styles[this.styleName] || maptilersdk.MapStyle.STREETS,
                 center,
-                zoom: this.config.defaultZoom,
-                minZoom: this.config.minZoomLevel ?? undefined,
-                maxZoom: this.config.maxZoomLevel ?? undefined,
+                zoom: cfg.defaultZoom,
+                minZoom: cfg.minZoomLevel ?? undefined,
+                maxZoom: cfg.maxZoomLevel ?? undefined,
                 navigationControl: false,
                 geolocateControl: false,
                 terrainControl: false,
                 scaleControl: false,
                 fullscreenControl: false,
                 projectionControl: false,
-                hash: !!this.config.hash,
-                maxBounds: this.config.maxBounds || undefined,
+                hash: !!cfg.hash,
+                maxBounds: cfg.maxBounds || undefined,
             };
 
             // ? Prepare locking overlay and banner
@@ -75,8 +76,8 @@ export default function mapTilerPicker({ config, state }) {
 
             const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
             hookInteractionGuards(containerEl, map, limiters, lock);
-            if (this.config.showStyleSwitcher) {
-                addStyleSwitcherControl(map, this.styles, this.config, lock, (s) => this.setStyle(s));
+            if (cfg.showStyleSwitcher) {
+                addStyleSwitcherControl(map, styles, cfg, lock, (s) => this.setStyle(s));
             }
 
             // ? Throttled coordinate updates (fallsback to global lock when violated)
@@ -89,7 +90,7 @@ export default function mapTilerPicker({ config, state }) {
 
             // ? Guards geolocate button: intercept FIRST, then decide to lock, rate-limit, or trigger
             // ? Geolocate button (guarded above)
-            const geoCfg = this.config.geolocate;
+            const geoCfg = cfg.geolocate;
             if (geoCfg.enabled) {
                 addGeolocateControl(map, this.$refs.mapContainer || containerEl, geoCfg, limiters, lock, {
                     lastFix: () => this.lastFix,
@@ -113,12 +114,12 @@ export default function mapTilerPicker({ config, state }) {
             }
 
             // ? Navigation control buttons (guarded above)
-            if (this.config.rotationable || this.config.zoomable) {
+            if (cfg.rotationable || cfg.zoomable) {
                 map.addControl(
                     new maptilersdk.MaptilerNavigationControl({
-                        showCompass: this.config.rotationable,
-                        showZoom: this.config.zoomable,
-                        visualizePitch: this.config.rotationable,
+                        showCompass: cfg.rotationable,
+                        showZoom: cfg.zoomable,
+                        visualizePitch: cfg.rotationable,
                     }),
                     'top-right'
                 );
@@ -126,11 +127,11 @@ export default function mapTilerPicker({ config, state }) {
                 hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, lock);
                 map.on('styledata', () => hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, lock));
             }
-            if (!this.config.rotationable) {
+            if (!cfg.rotationable) {
                 map.dragRotate.disable();
                 map.touchZoomRotate.disableRotation();
             }
-            if (!this.config.zoomable) {
+            if (!cfg.zoomable) {
                 map.scrollZoom.disable();
                 map.boxZoom.disable();
                 map.doubleClickZoom.disable();
@@ -142,8 +143,8 @@ export default function mapTilerPicker({ config, state }) {
             this.applyLocaleIfNeeded();
 
             // ? The marker
-            const mopts = { draggable: this.config.draggable };
-            if (this.config.customMarker) mopts.element = createMarkerElement(this.config.customMarker);
+            const mopts = { draggable: cfg.draggable };
+            if (cfg.customMarker) mopts.element = createMarkerElement(cfg.customMarker);
             marker = new maptilersdk.Marker(mopts).setLngLat(center).addTo(map);
 
             // ? Initial positioning
@@ -152,14 +153,14 @@ export default function mapTilerPicker({ config, state }) {
             this.pushToState(initial);
 
             // ? Clicking to move
-            if (this.config.clickable) {
+            if (cfg.clickable) {
                 map.on('click', (e) => {
                     if (lock.isLocked()) return;
                     this.markerMoved({ latLng: e.lngLat });
                 });
             }
             // ? Dragging to move
-            if (this.config.draggable) {
+            if (cfg.draggable) {
                 marker.on('dragend', () => {
                     if (lock.isLocked()) return;
                     this.markerMoved({ latLng: marker.getLngLat() });
@@ -170,12 +171,12 @@ export default function mapTilerPicker({ config, state }) {
             map.on('load', () => this.applyLocaleIfNeeded());
             map.on('styledata', () => this.applyLocaleIfNeeded());
             map.on('styleimagemissing', () => {}); // silence empty sprite warnings
-            attachWebglFailureProtection(map, this.styles, this.config, () => this.hardRefreshSoon());
+            attachWebglFailureProtection(map, styles, cfg, () => this.hardRefreshSoon());
         },
 
         // Wrapped helpers (use closure vars)
         applyLocaleIfNeeded() {
-            applyLocale(map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer);
+            applyLocale(map, cfg.language, cfg.controlTranslations, this.$refs.mapContainer);
         },
         hardRefreshSoon() {
             if (document.visibilityState !== 'visible') return;
@@ -184,8 +185,8 @@ export default function mapTilerPicker({ config, state }) {
         },
         setStyle(styleName) {
             if (lock && lock.isLocked && lock.isLocked()) return;
-            this.config.style = styleName;
-            const style = this.styles[styleName] || maptilersdk.MapStyle.STREETS;
+            this.styleName = styleName;
+            const style = styles[styleName] || maptilersdk.MapStyle.STREETS;
             try {
                 map.setStyle(style);
             } catch (err) {
@@ -194,8 +195,8 @@ export default function mapTilerPicker({ config, state }) {
         },
         recreateMapInstance() {
             const center = marker ? marker.getLngLat() : null;
-            const zoom = map ? map.getZoom() : this.config.defaultZoom;
-            const styleName = this.config.style;
+            const zoom = map ? map.getZoom() : cfg.defaultZoom;
+            const styleName = this.styleName;
             try {
                 map && map.remove();
             } catch (_) {}
@@ -344,7 +345,7 @@ export default function mapTilerPicker({ config, state }) {
         getInitialCoordinates() {
             const v = this.state;
             if (!v || typeof v.lat !== 'number' || typeof v.lng !== 'number') {
-                return { ...this.config.defaultLocation };
+                return { ...cfg.defaultLocation };
             }
             return { lat: v.lat, lng: v.lng };
         },
