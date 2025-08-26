@@ -1,10 +1,5 @@
 import * as maptilersdk from '@maptiler/sdk';
-import {
-    throttle,
-    backoffDelays,
-    sleep,
-    isTransientNetworkError,
-} from './helpers.js';
+import { throttle, isTransientNetworkError } from './helpers.js';
 import {
     buildStyles,
     applyLocale,
@@ -16,6 +11,7 @@ import {
     hookNavButtons,
     hookInteractionGuards,
     addStyleSwitcherControl,
+    attachWebglFailureProtection,
 } from './map-features.js';
 
 export default function mapTilerPicker({ config }) {
@@ -200,41 +196,7 @@ export default function mapTilerPicker({ config }) {
             map.on('load', () => this.applyLocaleIfNeeded());
             map.on('styledata', () => this.applyLocaleIfNeeded());
             map.on('styleimagemissing', () => {}); // silence empty sprite warnings
-
-            // ? WebGL errors recovery
-            map.on('webglcontextlost', (e) => {
-                e.preventDefault();
-                this.tryReloadStyleWithBackoff().then((ok) => {
-                    if (!ok) this.hardRefreshSoon();
-                });
-            });
-            let errorTimer = null;
-            map.on('error', (evt) => {
-                const err = evt && evt.error;
-                if (!isTransientNetworkError(err)) return;
-                if (errorTimer) clearTimeout(errorTimer);
-                errorTimer = setTimeout(() => {
-                    this.tryReloadStyleWithBackoff().then((ok) => {
-                        if (!ok) this.hardRefreshSoon();
-                    });
-                }, 150);
-            });
-            window.addEventListener('online', () => {
-                this.tryReloadStyleWithBackoff().then((ok) => {
-                    if (!ok) this.hardRefreshSoon();
-                });
-            });
-            document.addEventListener(
-                'visibilitychange',
-                () => {
-                    if (document.visibilityState === 'visible') {
-                        this.tryReloadStyleWithBackoff().then((ok) => {
-                            if (!ok) this.hardRefreshSoon();
-                        });
-                    }
-                },
-                { passive: true }
-            );
+            attachWebglFailureProtection(map, styles, this.config, () => this.hardRefreshSoon());
         },
 
         recreateMapInstance() {
@@ -267,30 +229,6 @@ export default function mapTilerPicker({ config }) {
                 if (isTransientNetworkError(err)) this.hardRefreshSoon();
                 else console.error('setStyle failed:', err);
             }
-        },
-
-        async tryReloadStyleWithBackoff() {
-            const delays = backoffDelays(5);
-            for (let i = 0; i < delays.length; i++) {
-                try {
-                    const style = styles[this.config.style] || maptilersdk.MapStyle.STREETS;
-                    map.setStyle(style);
-                    await new Promise((resolve, reject) => {
-                        const onError = (e) => reject(e && e.error ? e.error : new Error('style error'));
-                        const onStyle = () => {
-                            map.off('error', onError);
-                            resolve();
-                        };
-                        map.once('styledata', onStyle);
-                        map.once('error', onError);
-                    });
-                    return true;
-                } catch (err) {
-                    if (!isTransientNetworkError(err)) break;
-                    await sleep(delays[i]);
-                }
-            }
-            return false;
         },
 
         hardRefreshSoon() {
