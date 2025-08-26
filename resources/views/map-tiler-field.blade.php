@@ -13,9 +13,8 @@
         x-load-src="
             {{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('map-tiler-field', 'goodm4ven/filament-map-tiler') }}
         "
-        x-data="mapTilerPicker({
-            config: @js($getMapConfig())
-        })"
+        x-data="mapTilerPicker({ config: @js($getMapConfig()) })"
+        x-on:livewire:update.window="updateMapFromAlpine()"
         x-on:open-modal.window="
             if ($event.detail.id === 'location-search-modal') {
                 $store.mt.searchQuery = '';
@@ -60,7 +59,7 @@
                         />
                     </svg>
                     <p class="text-sm text-gray-700 dark:text-gray-200">
-                        {{ __('filament-map-tiler::filament-map-tiler.selected_location') }}
+                        {{ __('filament-map-tiler::filament-map-tiler.selected_locations') }}
                         <span
                             class="font-medium"
                             x-text="lat ? lat.toFixed(6) : ''"
@@ -175,7 +174,7 @@
                         />
                     </svg>
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        {{ __('filament-map-tiler::filament-map-tiler.search_no_results') }}
+                        {{ __('filament-map-tiler::filament-map-tiler.no_results') }}
                     </p>
                 </div>
             </div>
@@ -185,7 +184,7 @@
                     color="gray"
                     @click="$dispatch('close-modal', { id: 'location-search-modal' })"
                 >
-                    {{ __('filament-map-tiler::filament-map-tiler.search_cancel') }}
+                    {{ __('filament-map-tiler::filament-map-tiler.cancel') }}
                 </x-filament::button>
             </x-slot>
         </x-filament::modal>

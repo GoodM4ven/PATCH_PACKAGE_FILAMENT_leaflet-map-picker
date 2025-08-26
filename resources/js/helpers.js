@@ -28,13 +28,13 @@ export function throttle(fn, wait) {
         }
     };
 }
-// export function debounce(fn, wait) {
-//     let t = null;
-//     return (...args) => {
-//         clearTimeout(t);
-//         t = setTimeout(() => fn(...args), wait);
-//     };
-// }
+export function debounce(fn, wait) {
+    let t = null;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), wait);
+    };
+}
 
 export function isTransientNetworkError(err) {
     const msg = (err && (err.message || err.toString())) || '';
