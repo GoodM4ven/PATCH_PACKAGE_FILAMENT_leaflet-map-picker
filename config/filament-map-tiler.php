@@ -28,7 +28,7 @@ return [
             'interval' => 60_000, // ? 1 minute
             'geolocate' => 5,
             'zoom' => 360,
-            'pinMove' => 20,
+            'pinMove' => 10,
             'cameraMove' => 80,
             'search' => 10,
         ],
