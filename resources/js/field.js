@@ -35,13 +35,15 @@ export default function mapTilerPicker({ config, state }) {
         lng: null,
         commitCoordinates: null,
         config: cfg,
-        state,
+        state, // entangled proxy – do NOT replace it, only set its props
 
         init() {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
-            this.$watch('state', (val) => this.onStateChanged(val));
+            // watch individual properties so we don't depend on object identity
+            this.$watch('state.lat', (v) => this.onStateChanged({ lat: v, lng: this.state?.lng }));
+            this.$watch('state.lng', (v) => this.onStateChanged({ lat: this.state?.lat, lng: v }));
             this.initMap();
         },
 
@@ -229,14 +231,14 @@ export default function mapTilerPicker({ config, state }) {
                 st.isSearching = false;
                 return;
             }
-            if (this.lock.isLocked()) {
+            if (lock.isLocked()) {
                 st.isSearching = false;
                 return;
             }
             const t = limiters.search.try();
             if (!t.ok) {
                 st.isSearching = false;
-                this.lock.lockFor(t.resetMs);
+                lock.lockFor(t.resetMs);
                 return;
             }
             try {
@@ -335,8 +337,9 @@ export default function mapTilerPicker({ config, state }) {
             }
         },
         pushToState(position) {
-            // write to entangled state (this triggers a single Livewire model update honoring modifiers)
-            this.state = { lat: position.lat, lng: position.lng };
+            // IMPORTANT: mutate entangled proxy props; do NOT replace the object
+            if (typeof position.lat === 'number') this.state.lat = position.lat;
+            if (typeof position.lng === 'number') this.state.lng = position.lng;
         },
         getInitialCoordinates() {
             const v = this.state;
