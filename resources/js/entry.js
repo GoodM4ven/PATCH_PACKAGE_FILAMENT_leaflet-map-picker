@@ -1,7 +1,6 @@
 import * as maptilersdk from '@maptiler/sdk';
 import {
     buildStyles,
-    applyLocale,
     setupSdk,
     createLock,
     createLimiters,
@@ -10,13 +9,18 @@ import {
     hookNavButtons,
     hookInteractionGuards,
     addStyleSwitcherControl,
+    attachWebglFailureProtection,
+    applyLocaleIfNeeded,
+    setStyle,
+    hardRefreshSoon,
+    recreateMapInstance,
 } from './map-features.js';
 
 export default function mapTilerEntry({ location, config }) {
     const cfg = config;
     setupSdk(cfg);
-    const lock = createLock(cfg);
     const limiters = createLimiters(cfg.rateLimit);
+
     return {
         map: null,
         marker: null,
@@ -24,10 +28,11 @@ export default function mapTilerEntry({ location, config }) {
         config: cfg,
 
         styles: {},
+        lock: createLock(cfg),
 
         init() {
             this.location = location;
-            lock.initUI(this.$refs.mapContainer);
+            this.lock.initUI(this.$refs.mapContainer);
             this.styles = buildStyles(this.config.customStyles);
             this.initMap();
         },
@@ -46,9 +51,9 @@ export default function mapTilerEntry({ location, config }) {
                 maxBounds: this.config.maxBounds || undefined,
             };
 
-            lock.attachMap(this.map = new maptilersdk.Map(mapOptions));
+            this.lock.attachMap((this.map = new maptilersdk.Map(mapOptions)));
             const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
-            hookInteractionGuards(containerEl, this.map, limiters, lock);
+            hookInteractionGuards(containerEl, this.map, limiters, this.lock);
 
             const markerOptions = {};
             if (this.config.customMarker) {
@@ -57,7 +62,7 @@ export default function mapTilerEntry({ location, config }) {
             this.marker = new maptilersdk.Marker(markerOptions).setLngLat(coords).addTo(this.map);
 
             if (this.config.showStyleSwitcher) {
-                addStyleSwitcherControl(this.map, this.styles, this.config, lock, (s) => this.setStyle(s));
+                addStyleSwitcherControl(this.map, this.styles, this.config, this.lock, (s) => this.setStyle(s));
             }
             if (this.config.rotationable || this.config.zoomable) {
                 this.map.addControl(
@@ -68,8 +73,8 @@ export default function mapTilerEntry({ location, config }) {
                     }),
                     'top-right'
                 );
-                hookNavButtons(containerEl, this.map, limiters, lock);
-                this.map.on('styledata', () => hookNavButtons(containerEl, this.map, limiters, lock));
+                hookNavButtons(containerEl, this.map, limiters, this.lock);
+                this.map.on('styledata', () => hookNavButtons(containerEl, this.map, limiters, this.lock));
             }
             if (!this.config.rotationable) {
                 this.map.dragRotate.disable();
@@ -91,18 +96,18 @@ export default function mapTilerEntry({ location, config }) {
                     fitBoundsOptions: { maxZoom: 15 },
                 });
                 this.map.addControl(geo, 'top-right');
-                hookGeolocateButton({ container: containerEl, geo, limiters, lock });
+                hookGeolocateButton({ container: containerEl, geo, limiters, lock: this.lock });
                 geo.on('geolocate', (e) => {
-                    if (lock.isLocked()) return;
+                    if (this.lock.isLocked()) return;
                     const { latitude, longitude } = e.coords;
                     this.map.jumpTo({ center: [longitude, latitude], zoom: Math.max(this.map.getZoom(), 15) });
                 });
                 if (geoCfg.runOnLoad) {
                     this.map.on('load', () => {
-                        if (lock.isLocked()) return;
+                        if (this.lock.isLocked()) return;
                         const t = limiters.geolocate.try();
                         if (!t.ok) {
-                            lock.lockFor(t.resetMs);
+                            this.lock.lockFor(t.resetMs);
                             return;
                         }
                         try {
@@ -112,15 +117,16 @@ export default function mapTilerEntry({ location, config }) {
                 }
             }
 
-            this.map.on('load', () => applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer));
-            this.map.on('styledata', () => applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer));
+            this.map.on('load', () => this.applyLocaleIfNeeded());
+            this.map.on('styledata', () => this.applyLocaleIfNeeded());
+            this.map.on('styleimagemissing', () => {});
+            attachWebglFailureProtection(this.map, this.styles, this.config, () => this.hardRefreshSoon());
         },
 
-        setStyle(styleName) {
-            const style = this.styles[styleName] || maptilersdk.MapStyle.STREETS;
-            this.map.setStyle(style);
-        },
-
+        setStyle,
+        hardRefreshSoon,
+        recreateMapInstance,
+        applyLocaleIfNeeded,
 
         getCoordinates() {
             let locationObj = this.location;
@@ -143,3 +149,4 @@ export default function mapTilerEntry({ location, config }) {
         },
     };
 }
+

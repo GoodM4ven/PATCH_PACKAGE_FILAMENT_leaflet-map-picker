@@ -1,8 +1,7 @@
 import * as maptilersdk from '@maptiler/sdk';
-import { throttle, isTransientNetworkError } from './helpers.js';
+import { throttle } from './helpers.js';
 import {
     buildStyles,
-    applyLocale,
     setupSdk,
     createLock,
     createLimiters,
@@ -12,24 +11,27 @@ import {
     hookInteractionGuards,
     addStyleSwitcherControl,
     attachWebglFailureProtection,
+    applyLocaleIfNeeded,
+    hardRefreshSoon,
+    setStyle,
+    recreateMapInstance,
 } from './map-features.js';
 
 export default function mapTilerPicker({ config }) {
     const cfg = config;
     setupSdk(cfg);
 
-    let map = null;
-    let marker = null;
-    let styles = buildStyles(cfg.customStyles);
-    let lastFix = null; // { lat, lng, accuracy, timestamp }
-
-    const lock = createLock(cfg);
     const limiters = createLimiters(cfg.rateLimit);
 
     // ? Alpine store shortcut
     const S = () => Alpine.store('mt');
 
     return {
+        map: null,
+        marker: null,
+        styles: buildStyles(cfg.customStyles),
+        lock: createLock(cfg),
+        lastFix: null,
         lat: null,
         lng: null,
         commitCoordinates: null,
@@ -48,7 +50,7 @@ export default function mapTilerPicker({ config }) {
             const center = [initial.lng, initial.lat];
             const mapOptions = {
                 container: this.$refs.mapContainer,
-                style: styles[this.config.style] || maptilersdk.MapStyle.STREETS,
+                style: this.styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center,
                 zoom: this.config.defaultZoom,
                 minZoom: this.config.minZoomLevel ?? undefined,
@@ -64,23 +66,23 @@ export default function mapTilerPicker({ config }) {
             };
 
             // ? Prepare locking overlay and banner
-            lock.initUI(this.$refs.mapContainer);
+            this.lock.initUI(this.$refs.mapContainer);
 
-            map = new maptilersdk.Map(mapOptions);
-            lock.attachMap(map);
+            this.map = new maptilersdk.Map(mapOptions);
+            this.lock.attachMap(this.map);
 
-            const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
-            hookInteractionGuards(containerEl, map, limiters, lock);
+            const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
+            hookInteractionGuards(containerEl, this.map, limiters, this.lock);
             if (this.config.showStyleSwitcher) {
-                addStyleSwitcherControl(map, styles, this.config, lock, (s) => this.setStyle(s));
+                addStyleSwitcherControl(this.map, this.styles, this.config, this.lock, (s) => this.setStyle(s));
             }
 
             // ? Throttled coordinate updates (fallsback to global lock when violated)
             this.commitCoordinates = throttle((position) => {
-                if (lock.isLocked()) return; // ? Banner is already running
+                if (this.lock.isLocked()) return; // ? Banner is already running
                 const t = limiters.pinMove.try();
                 if (t.ok) this.setCoordinates(position);
-                else lock.lockFor(t.resetMs);
+                else this.lock.lockFor(t.resetMs);
             }, 300);
 
             // ? Guards geolocate button: intercept FIRST, then decide to lock, rate-limit, or trigger
@@ -92,28 +94,28 @@ export default function mapTilerPicker({ config }) {
                     positionOptions: { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
                     fitBoundsOptions: { maxZoom: 15 },
                 });
-                map.addControl(geo, 'top-right');
+                this.map.addControl(geo, 'top-right');
                 // ? Hooking to the guard
                 const geoOpts = {
                     container: this.$refs.mapContainer || containerEl,
                     geo,
                     limiters,
-                    lock,
-                    lastFix: () => lastFix,
+                    lock: this.lock,
+                    lastFix: () => this.lastFix,
                     jumpTo: (pos, opts) => this.jumpTo(pos, opts),
                     cacheMs: (this.config.geolocate && this.config.geolocate.cacheInMs) || Infinity,
                 };
                 hookGeolocateButton(geoOpts);
-                map.on('styledata', () => hookGeolocateButton(geoOpts));
+                this.map.on('styledata', () => hookGeolocateButton(geoOpts));
                 geo.on('geolocate', (e) => {
-                    if (lock.isLocked()) return;
+                    if (this.lock.isLocked()) return;
                     if (geoCfg.pinAsWell !== false) {
                         const { latitude, longitude } = e.coords;
-                        marker.setLngLat([longitude, latitude]);
+                        this.marker.setLngLat([longitude, latitude]);
                         this.lat = latitude;
                         this.lng = longitude;
                         this.commitCoordinates({ lat: latitude, lng: longitude });
-                        lastFix = {
+                        this.lastFix = {
                             lat: latitude,
                             lng: longitude,
                             accuracy: typeof accuracy === 'number' ? accuracy : null,
@@ -124,11 +126,11 @@ export default function mapTilerPicker({ config }) {
 
                 // ? Optionally auto-trigger geolocation on load
                 if (geoCfg.runOnLoad) {
-                    map.on('load', () => {
-                        if (lock.isLocked()) return;
+                    this.map.on('load', () => {
+                        if (this.lock.isLocked()) return;
                         const t = limiters.geolocate.try();
                         if (!t.ok) {
-                            lock.lockFor(t.resetMs);
+                            this.lock.lockFor(t.resetMs);
                             return;
                         }
                         try {
@@ -140,7 +142,7 @@ export default function mapTilerPicker({ config }) {
 
             // ? Navigation control buttons (guarded above)
             if (this.config.rotationable || this.config.zoomable) {
-                map.addControl(
+                this.map.addControl(
                     new maptilersdk.MaptilerNavigationControl({
                         showCompass: this.config.rotationable,
                         showZoom: this.config.zoomable,
@@ -149,19 +151,19 @@ export default function mapTilerPicker({ config }) {
                     'top-right'
                 );
                 // ? Hook to the guards
-                hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, lock);
-                map.on('styledata', () => hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, lock));
+                hookNavButtons(this.$refs.mapContainer || containerEl, this.map, limiters, this.lock);
+                this.map.on('styledata', () => hookNavButtons(this.$refs.mapContainer || containerEl, this.map, limiters, this.lock));
             }
             if (!this.config.rotationable) {
-                map.dragRotate.disable();
-                map.touchZoomRotate.disableRotation();
+                this.map.dragRotate.disable();
+                this.map.touchZoomRotate.disableRotation();
             }
             if (!this.config.zoomable) {
-                map.scrollZoom.disable();
-                map.boxZoom.disable();
-                map.doubleClickZoom.disable();
-                map.touchZoomRotate.disable();
-                map.keyboard.disable();
+                this.map.scrollZoom.disable();
+                this.map.boxZoom.disable();
+                this.map.doubleClickZoom.disable();
+                this.map.touchZoomRotate.disable();
+                this.map.keyboard.disable();
             }
 
             // ? Applying localization to the labels
@@ -170,7 +172,7 @@ export default function mapTilerPicker({ config }) {
             // ? The marker
             const mopts = { draggable: this.config.draggable };
             if (this.config.customMarker) mopts.element = createMarkerElement(this.config.customMarker);
-            marker = new maptilersdk.Marker(mopts).setLngLat(center).addTo(map);
+            this.marker = new maptilersdk.Marker(mopts).setLngLat(center).addTo(this.map);
 
             // ? Initial positioning
             this.lat = initial.lat;
@@ -179,67 +181,30 @@ export default function mapTilerPicker({ config }) {
 
             // ? Clicking to move
             if (this.config.clickable) {
-                map.on('click', (e) => {
-                    if (lock.isLocked()) return;
+                this.map.on('click', (e) => {
+                    if (this.lock.isLocked()) return;
                     this.markerMoved({ latLng: e.lngLat });
                 });
             }
             // ? Dragging to move
             if (this.config.draggable) {
-                marker.on('dragend', () => {
-                    if (lock.isLocked()) return;
-                    this.markerMoved({ latLng: marker.getLngLat() });
+                this.marker.on('dragend', () => {
+                    if (this.lock.isLocked()) return;
+                    this.markerMoved({ latLng: this.marker.getLngLat() });
                 });
             }
 
             // ? Style and localize
-            map.on('load', () => this.applyLocaleIfNeeded());
-            map.on('styledata', () => this.applyLocaleIfNeeded());
-            map.on('styleimagemissing', () => {}); // silence empty sprite warnings
-            attachWebglFailureProtection(map, styles, this.config, () => this.hardRefreshSoon());
+            this.map.on('load', () => this.applyLocaleIfNeeded());
+            this.map.on('styledata', () => this.applyLocaleIfNeeded());
+            this.map.on('styleimagemissing', () => {}); // silence empty sprite warnings
+            attachWebglFailureProtection(this.map, this.styles, this.config, () => this.hardRefreshSoon());
         },
 
-        recreateMapInstance() {
-            const center = marker ? marker.getLngLat() : null;
-            const zoom = map ? map.getZoom() : this.config.defaultZoom;
-            const styleName = this.config.style;
-            try {
-                map && map.remove();
-            } catch (_) {}
-            map = null;
-            marker = null;
-
-            this.initMap();
-
-            if (center) {
-                map.setCenter([center.lng, center.lat]);
-                map.setZoom(zoom);
-                marker.setLngLat([center.lng, center.lat]);
-            }
-            if (styleName) this.setStyle(styleName);
-        },
-
-        setStyle(styleName) {
-            if (lock.isLocked()) return;
-            this.config.style = styleName;
-            const style = styles[styleName] || maptilersdk.MapStyle.STREETS;
-            try {
-                map.setStyle(style);
-            } catch (err) {
-                if (isTransientNetworkError(err)) this.hardRefreshSoon();
-                else console.error('setStyle failed:', err);
-            }
-        },
-
-        hardRefreshSoon() {
-            if (document.visibilityState !== 'visible') return;
-            if (!navigator.onLine) return;
-            this.recreateMapInstance();
-        },
-
-        applyLocaleIfNeeded() {
-            applyLocale(map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer);
-        },
+        recreateMapInstance,
+        setStyle,
+        hardRefreshSoon,
+        applyLocaleIfNeeded,
 
         // ? =======
         // ? Search
@@ -262,14 +227,14 @@ export default function mapTilerPicker({ config }) {
                 st.isSearching = false;
                 return;
             }
-            if (lock.isLocked()) {
+            if (this.lock.isLocked()) {
                 st.isSearching = false;
                 return;
             }
             const t = limiters.search.try();
             if (!t.ok) {
                 st.isSearching = false;
-                lock.lockFor(t.resetMs);
+                this.lock.lockFor(t.resetMs);
                 return;
             }
             try {
@@ -283,9 +248,9 @@ export default function mapTilerPicker({ config }) {
         },
         selectLocationFromModal(result) {
             const [lng, lat] = result.center || result.geometry.coordinates;
-            map.setCenter([lng, lat]);
-            map.setZoom(15);
-            marker.setLngLat([lng, lat]);
+            this.map.setCenter([lng, lat]);
+            this.map.setZoom(15);
+            this.marker.setLngLat([lng, lat]);
             this.lat = lat;
             this.lng = lng;
             this.commitCoordinates({ lat, lng });
@@ -311,7 +276,7 @@ export default function mapTilerPicker({ config }) {
                         '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>';
                     btn.title = self.config.searchLocationButtonLabel || 'Search Location';
                     btn.onclick = () => {
-                        if (!lock.isLocked()) self.$dispatch('open-modal', { id: 'location-search-modal' });
+                        if (!self.lock.isLocked()) self.$dispatch('open-modal', { id: 'location-search-modal' });
                     };
                     this.container.appendChild(btn);
                     return this.container;
@@ -321,7 +286,7 @@ export default function mapTilerPicker({ config }) {
                     this.map = undefined;
                 }
             }
-            map.addControl(new SearchControl(), 'top-left');
+            this.map.addControl(new SearchControl(), 'top-left');
         },
 
         // ? ============
@@ -330,11 +295,11 @@ export default function mapTilerPicker({ config }) {
 
         jumpTo(position, { zoom } = {}) {
             // programmatic move: we *do not* count this against cameraMove
-            marker.setLngLat([position.lng, position.lat]);
+            this.marker.setLngLat([position.lng, position.lat]);
             if (typeof zoom === 'number') {
-                map.jumpTo({ center: [position.lng, position.lat], zoom });
+                this.map.jumpTo({ center: [position.lng, position.lat], zoom });
             } else {
-                map.jumpTo({ center: [position.lng, position.lat] });
+                this.map.jumpTo({ center: [position.lng, position.lat] });
             }
             this.lat = position.lat;
             this.lng = position.lng;
@@ -344,17 +309,17 @@ export default function mapTilerPicker({ config }) {
             this.lat = p.lat;
             this.lng = p.lng;
             this.commitCoordinates({ lat: this.lat, lng: this.lng });
-            marker.setLngLat([this.lng, this.lat]);
-            map.easeTo({ center: [this.lng, this.lat] });
+            this.marker.setLngLat([this.lng, this.lat]);
+            this.map.easeTo({ center: [this.lng, this.lat] });
         },
         updateMapFromAlpine() {
             const location = this.getCoordinates();
-            const pos = marker.getLngLat();
+            const pos = this.marker.getLngLat();
             if (location.lat !== pos.lat || location.lng !== pos.lng) this.updateMap(location);
         },
         updateMap(position) {
-            marker.setLngLat([position.lng, position.lat]);
-            map.easeTo({ center: [position.lng, position.lat] });
+            this.marker.setLngLat([position.lng, position.lat]);
+            this.map.easeTo({ center: [position.lng, position.lat] });
             this.lat = position.lat;
             this.lng = position.lng;
         },
@@ -362,7 +327,7 @@ export default function mapTilerPicker({ config }) {
         // ? =================
         // ? Livewire Updates
         // ? ===============
-        
+
         setCoordinates(position) {
             this.$wire.set(this.config.statePath, { lat: position.lat, lng: position.lng });
         },
@@ -373,6 +338,6 @@ export default function mapTilerPicker({ config }) {
             }
             return { lat: location.lat, lng: location.lng };
         },
-
     };
 }
+

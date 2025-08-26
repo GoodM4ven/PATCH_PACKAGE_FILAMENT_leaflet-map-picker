@@ -594,3 +594,45 @@ function applyControlTranslations(container, dict = {}, language) {
     set('.maplibregl-ctrl-fullscreen', 'FullscreenControl.Enter');
     set('.maplibregl-ctrl-geolocate', 'GeolocateControl.FindMyLocation');
 }
+
+export function applyLocaleIfNeeded() {
+    applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer);
+}
+
+export function hardRefreshSoon() {
+    if (document.visibilityState !== 'visible') return;
+    if (!navigator.onLine) return;
+    this.recreateMapInstance();
+}
+
+export function setStyle(styleName) {
+    if (this.lock && this.lock.isLocked && this.lock.isLocked()) return;
+    this.config.style = styleName;
+    const style = this.styles[styleName] || maptilersdk.MapStyle.STREETS;
+    try {
+        this.map.setStyle(style);
+    } catch (err) {
+        if (isTransientNetworkError(err)) this.hardRefreshSoon();
+        else console.error('setStyle failed:', err);
+    }
+}
+
+export function recreateMapInstance() {
+    const center = this.marker ? this.marker.getLngLat() : null;
+    const zoom = this.map ? this.map.getZoom() : this.config.defaultZoom;
+    const styleName = this.config.style;
+    try {
+        this.map && this.map.remove();
+    } catch (_) {}
+    this.map = null;
+    this.marker = null;
+
+    this.initMap();
+
+    if (center) {
+        this.map.setCenter([center.lng, center.lat]);
+        this.map.setZoom(zoom);
+        this.marker.setLngLat([center.lng, center.lat]);
+    }
+    if (styleName) this.setStyle(styleName);
+}
