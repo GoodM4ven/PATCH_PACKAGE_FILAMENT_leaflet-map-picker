@@ -1,5 +1,12 @@
 import * as maptilersdk from '@maptiler/sdk';
-import { createRateLimiter, ensureOverlay, ensureCountdownBanner } from './helpers.js';
+import {
+    createRateLimiter,
+    ensureOverlay,
+    ensureCountdownBanner,
+    backoffDelays,
+    sleep,
+    isTransientNetworkError,
+} from './helpers.js';
 
 export function buildStyles(customStyles = {}) {
     const base = {
@@ -18,7 +25,10 @@ export function buildStyles(customStyles = {}) {
 }
 
 export function setupSdk(cfg) {
-    if (cfg.language) cfg.language = cfg.language.toLowerCase();
+    if (cfg.language) {
+        cfg.language = cfg.language.toLowerCase();
+        if (cfg.language === 'arabic') cfg.language = 'ar';
+    }
 
     if (!cfg.apiKey) throw new Error('MapTiler API key is required');
 
@@ -34,17 +44,20 @@ export function setupSdk(cfg) {
 }
 
 export function applyLocale(map, language, translations = {}, container) {
-    if (!language) return;
-    const primary = maptilersdk.Language[language] || language;
-    try {
-        map.setLanguage(primary);
-    } catch {}
+    if (language) {
+        language = language.toLowerCase();
+        if (language === 'arabic') language = 'ar';
+        const primary = maptilersdk.Language[language] || language;
+        try {
+            map.setLanguage(primary);
+        } catch {}
+    }
     if (translations && Object.keys(translations).length) {
         try {
             map.setLocale(translations);
         } catch {}
-        if (language === 'ar' && container) {
-            forceArabicTitlesFallback(container, translations);
+        if (container) {
+            applyControlTranslations(container, translations, language);
         }
     }
 }
@@ -509,21 +522,75 @@ export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
     map.addControl(new TileControl(), 'top-right');
 }
 
-function forceArabicTitlesFallback(container, dict = {}) {
-    const set = (sel, title) => {
+export async function tryReloadStyleWithBackoff(map, styles, cfg) {
+    const delays = backoffDelays(5);
+    for (let i = 0; i < delays.length; i++) {
+        try {
+            const style = styles[cfg.style] || maptilersdk.MapStyle.STREETS;
+            map.setStyle(style);
+            await new Promise((resolve, reject) => {
+                const onError = (e) => reject(e && e.error ? e.error : new Error('style error'));
+                const onStyle = () => {
+                    map.off('error', onError);
+                    resolve();
+                };
+                map.once('styledata', onStyle);
+                map.once('error', onError);
+            });
+            return true;
+        } catch (err) {
+            if (!isTransientNetworkError(err)) break;
+            await sleep(delays[i]);
+        }
+    }
+    return false;
+}
+
+export function attachWebglFailureProtection(map, styles, cfg, hardRefresh) {
+    const reload = () =>
+        tryReloadStyleWithBackoff(map, styles, cfg).then((ok) => {
+            if (!ok && typeof hardRefresh === 'function') hardRefresh();
+        });
+
+    map.on('webglcontextlost', (e) => {
+        e.preventDefault();
+        reload();
+    });
+    let errorTimer = null;
+    map.on('error', (evt) => {
+        const err = evt && evt.error;
+        if (!isTransientNetworkError(err)) return;
+        if (errorTimer) clearTimeout(errorTimer);
+        errorTimer = setTimeout(() => reload(), 150);
+    });
+    window.addEventListener('online', reload);
+    document.addEventListener(
+        'visibilitychange',
+        () => {
+            if (document.visibilityState === 'visible') reload();
+        },
+        { passive: true }
+    );
+}
+
+function applyControlTranslations(container, dict = {}, language) {
+    const rtl = language === 'ar';
+    const set = (sel, key) => {
+        const title = dict[key];
         const el = container.querySelector(sel);
         if (el && title) {
             el.setAttribute('title', title);
             el.setAttribute('aria-label', title);
-            el.setAttribute('dir', 'rtl');
+            if (rtl) el.setAttribute('dir', 'rtl');
+            else el.removeAttribute('dir');
         }
     };
-    set('.maplibregl-ctrl-zoom-in', dict['NavigationControl.ZoomIn'] || 'تكبير');
-    set('.maplibregl-ctrl-zoom-out', dict['NavigationControl.ZoomOut'] || 'تصغير');
-    set('.maplibregl-ctrl-compass', dict['NavigationControl.ResetBearing'] || 'إعادة الاتجاه إلى الشمال');
-    set('.maplibregl-ctrl-pitchtoggle', dict['NavigationControl.PitchUp'] || 'رفع الميل');
-    set('.maplibregl-ctrl-rotate-left', dict['NavigationControl.RotateLeft'] || 'استدارة لليسار');
-    set('.maplibregl-ctrl-rotate-right', dict['NavigationControl.RotateRight'] || 'استدارة لليمين');
-    set('.maplibregl-ctrl-fullscreen', dict['FullscreenControl.Enter'] || 'دخول ملء الشاشة');
-    set('.maplibregl-ctrl-geolocate', dict['GeolocateControl.FindMyLocation'] || 'تحديد موقعي');
+    set('.maplibregl-ctrl-zoom-in', 'NavigationControl.ZoomIn');
+    set('.maplibregl-ctrl-zoom-out', 'NavigationControl.ZoomOut');
+    set('.maplibregl-ctrl-compass', 'NavigationControl.ResetBearing');
+    set('.maplibregl-ctrl-pitchtoggle', 'NavigationControl.PitchUp');
+    set('.maplibregl-ctrl-rotate-left', 'NavigationControl.RotateLeft');
+    set('.maplibregl-ctrl-rotate-right', 'NavigationControl.RotateRight');
+    set('.maplibregl-ctrl-fullscreen', 'FullscreenControl.Enter');
+    set('.maplibregl-ctrl-geolocate', 'GeolocateControl.FindMyLocation');
 }
