@@ -13,7 +13,7 @@ export default function mapTilerEntry({ location, config }) {
         init() {
             this.location = location;
             setupSdk(this.config);
-            this.styles = buildStyles(this.config.customTiles);
+            this.styles = buildStyles(this.config.customStyles);
             this.initMap();
         },
 

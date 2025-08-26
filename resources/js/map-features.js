@@ -1,6 +1,6 @@
 import * as maptilersdk from '@maptiler/sdk';
 
-export function buildStyles(customTiles = {}) {
+export function buildStyles(customStyles = {}) {
     const base = {
         STREETS: maptilersdk.MapStyle.STREETS,
         'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
@@ -13,7 +13,7 @@ export function buildStyles(customTiles = {}) {
         'DATAVIZ.DARK': maptilersdk.MapStyle.DATAVIZ.DARK,
         'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
     };
-    return { ...base, ...customTiles };
+    return { ...base, ...customStyles };
 }
 
 export function setupSdk(cfg) {

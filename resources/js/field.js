@@ -17,7 +17,7 @@ export default function mapTilerPicker({ config }) {
 
     let map = null;
     let marker = null;
-    let styles = buildStyles(cfg.customTiles);
+    let styles = buildStyles(cfg.customStyles);
     let lastFix = null; // { lat, lng, accuracy, timestamp }
 
     const lock = {
@@ -793,7 +793,7 @@ export default function mapTilerPicker({ config }) {
                     this.container = document.createElement('div');
                     this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
                     const label = document.createElement('label');
-                    label.textContent = self.config.style_text;
+                    label.textContent = self.config.style_switcher_label;
                     const select = document.createElement('select');
                     Object.keys(styles).forEach((key) => {
                         const option = document.createElement('option');

@@ -1,12 +1,12 @@
 <?php
 
 return [
-    'selected_locations' => 'Selected Location:',
+    'selected_location' => 'Selected Location:',
     'map_style' => 'Map Style',
     'search_location' => 'Search location',
     'search_placeholder' => 'Search location...',
-    'no_results' => 'No results found',
-    'cancel' => 'Cancel',
+    'search_no_results' => 'No results found',
+    'search_cancel' => 'Cancel',
     'controls' => [
         'NavigationControl.ZoomIn' => 'Zoom in',
         'NavigationControl.ZoomOut' => 'Zoom out',

@@ -76,7 +76,7 @@ trait HasMapFeatures
         }
 
         if (! app()->environment('testing')) {
-            $cacheKey = 'filament-map-tiler-api-key-'.md5($apiKey);
+            $cacheKey = 'filament-map-tiler-api-key-' . md5($apiKey);
             if (! Cache::get($cacheKey)) {
                 $headers = @get_headers("https://api.maptiler.com/maps/streets/style.json?key={$apiKey}");
                 if (! $headers || strpos($headers[0], '200') === false) {
@@ -209,6 +209,59 @@ trait HasMapFeatures
         return (bool) $this->evaluate($this->zoomable);
     }
 
+    /**
+     * Enable geolocation and optionally control behavior.
+     *
+     * Examples:
+     * ->geolocate()                                // enabled, runOnLoad=false, pinAsWell=false
+     * ->geolocate(runOnLoad: true)                 // enabled, trigger on load
+     * ->geolocate(pinAsWell: true)                 // enabled, move pin as well (fields only)
+     * ->geolocate(false)                           // disabled
+     * ->geolocate(['runOnLoad' => true])           // array form
+     */
+    public function geolocate(
+        bool|array $enabledOrSettings = true,
+        ?bool $runOnLoad = null,
+        ?bool $pinAsWell = null,
+        ?int $cacheInMs = 5 * 60 * 1000,
+    ): static {
+        if (is_bool($enabledOrSettings)) {
+            $settings = ['enabled' => $enabledOrSettings];
+        } else {
+            $settings = array_merge(['enabled' => true], $enabledOrSettings);
+        }
+
+        if ($runOnLoad !== null) {
+            $settings['runOnLoad'] = $runOnLoad;
+        }
+        if ($pinAsWell !== null) {
+            $settings['pinAsWell'] = $pinAsWell;
+        }
+        if ($cacheInMs !== null) {
+            $settings['cacheInMs'] = $cacheInMs;
+        }
+
+        $this->geolocate = $settings;
+
+        return $this;
+    }
+
+    public function getGeolocate(): array
+    {
+        $value = $this->evaluate($this->geolocate);
+        $defaults = $this->getMapTilerConfig('defaults.geolocate_options');
+
+        if ($value === false) {
+            return array_merge($defaults, ['enabled' => false]);
+        }
+
+        if ($value === true) {
+            return array_merge($defaults, ['enabled' => true]);
+        }
+
+        return array_merge($defaults, (array) $value);
+    }
+
     public function style(string|Closure $style): static
     {
         $this->style = $style;
@@ -315,58 +368,5 @@ trait HasMapFeatures
     public function getHash(): bool
     {
         return (bool) $this->evaluate($this->hash);
-    }
-
-    /**
-     * Enable geolocation and optionally control behavior.
-     *
-     * Examples:
-     * ->geolocate()                                // enabled, runOnLoad=false, pinAsWell=false
-     * ->geolocate(runOnLoad: true)                 // enabled, trigger on load
-     * ->geolocate(pinAsWell: true)                 // enabled, move pin as well (fields only)
-     * ->geolocate(false)                           // disabled
-     * ->geolocate(['runOnLoad' => true])           // array form
-     */
-    public function geolocate(
-        bool|array $enabledOrSettings = true,
-        ?bool $runOnLoad = null,
-        ?bool $pinAsWell = null,
-        ?int $cacheInMs = 5 * 60 * 1000,
-    ): static {
-        if (is_bool($enabledOrSettings)) {
-            $settings = ['enabled' => $enabledOrSettings];
-        } else {
-            $settings = array_merge(['enabled' => true], $enabledOrSettings);
-        }
-
-        if ($runOnLoad !== null) {
-            $settings['runOnLoad'] = $runOnLoad;
-        }
-        if ($pinAsWell !== null) {
-            $settings['pinAsWell'] = $pinAsWell;
-        }
-        if ($cacheInMs !== null) {
-            $settings['cacheInMs'] = $cacheInMs;
-        }
-
-        $this->geolocate = $settings;
-
-        return $this;
-    }
-
-    public function getGeolocate(): array
-    {
-        $value = $this->evaluate($this->geolocate);
-        $defaults = $this->getMapTilerConfig('defaults.geolocate_options');
-
-        if ($value === false) {
-            return array_merge($defaults, ['enabled' => false]);
-        }
-
-        if ($value === true) {
-            return array_merge($defaults, ['enabled' => true]);
-        }
-
-        return array_merge($defaults, (array) $value);
     }
 }

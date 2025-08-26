@@ -14,55 +14,71 @@ class MapTilerField extends Field
 
     protected string $view = 'filament-map-tiler::map-tiler-field';
 
-    protected string|Closure|null $searchLocationButtonLabel = 'Search Location';
-
     protected bool|Closure $draggable = true;
 
     protected bool|Closure $clickable = true;
+
+    protected string|Closure|null $searchLocationButtonLabel = 'Search Location';
 
     protected array|Closure $rateLimit = [];
 
     protected ?Closure $onRateLimit = null;
 
-    private int $precision = 8;
-
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->afterStateHydrated(fn () => $this->ensureValidApiKey());
+        $this->afterStateHydrated(fn() => $this->ensureValidApiKey());
     }
 
     public function getMapConfig(): array
     {
         return [
-            'draggable' => $this->getDraggable(),
-            'clickable' => $this->getClickable(),
+            'apiKey' => $this->getApiKey(),
+            'language' => $this->getLanguage(),
+            'controlTranslations' => __('filament-map-tiler::filament-map-tiler.controls'),
             'defaultLocation' => $this->getDefaultLocation(),
-            'statePath' => $this->getStatePath(),
-            'defaultZoom' => $this->getDefaultZoomLevel(),
             'minZoomLevel' => $this->getMinZoomLevel(),
+            'defaultZoom' => $this->getDefaultZoomLevel(),
             'maxZoomLevel' => $this->getMaxZoomLevel(),
-            'searchLocationButtonLabel' => $this->getSearchLocationButtonLabel(),
+            'zoomable' => $this->getZoomable(),
+            'geolocate' => $this->getGeolocate(),
             'style' => $this->getStyle(),
-            'customTiles' => $this->getCustomStyles(),
+            'showStyleSwitcher' => $this->getShowStyleSwitcher(),
+            'style_switcher_label' => __('filament-map-tiler::filament-map-tiler.map_style'),
+            'customStyles' => $this->getCustomStyles(),
             'customMarker' => $this->getCustomMarker(),
             'markerIconPath' => $this->getMarkerIconPath(),
             'markerShadowPath' => $this->getMarkerShadowPath(),
-            'style_text' => __('filament-map-tiler::filament-map-tiler.map_style'),
-            'is_disabled' => $this->isDisabled() || $this->isReadOnly(),
-            'showStyleSwitcher' => $this->getShowStyleSwitcher(),
+            'maxBounds' => $this->getMaxBounds(),
             'rotationable' => $this->getRotationable(),
             'hash' => $this->getHash(),
-            'maxBounds' => $this->getMaxBounds(),
-            'language' => $this->getLanguage(),
-            'geolocate' => $this->getGeolocate(),
-            'zoomable' => $this->getZoomable(),
-            'apiKey' => $this->getApiKey(),
+            'statePath' => $this->getStatePath(),
+            'is_disabled' => $this->isDisabled(),
+            'draggable' => $this->getDraggable(),
+            'clickable' => $this->getClickable(),
+            'searchLocationButtonLabel' => $this->getSearchLocationButtonLabel(),
             'rateLimit' => $this->getRateLimit(),
             'rateLimitEvent' => $this->getRateLimitEvent(),
-            'controlTranslations' => __('filament-map-tiler::filament-map-tiler.controls'),
         ];
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function getState(): array
+    {
+        $state = parent::getState();
+
+        if (is_array($state)) {
+            return $state;
+        } else {
+            try {
+                return @json_decode($state, true, 512, JSON_THROW_ON_ERROR);
+            } catch (Exception $e) {
+                return $this->getDefaultLocation();
+            }
+        }
     }
 
     public function draggable(bool|Closure $draggable = true): static
@@ -143,23 +159,5 @@ class MapTilerField extends Field
     public function getRateLimitEvent(): string
     {
         return 'map-tiler-rate-limit';
-    }
-
-    /**
-     * @throws JsonException
-     */
-    public function getState(): array
-    {
-        $state = parent::getState();
-
-        if (is_array($state)) {
-            return $state;
-        } else {
-            try {
-                return @json_decode($state, true, 512, JSON_THROW_ON_ERROR);
-            } catch (Exception $e) {
-                return $this->getDefaultLocation();
-            }
-        }
     }
 }
