@@ -89,32 +89,25 @@ export default function mapTilerPicker({ config }) {
             // ? Geolocate button (guarded above)
             const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
-                addGeolocateControl(
-                    this.map,
-                    this.$refs.mapContainer || containerEl,
-                    geoCfg,
-                    limiters,
-                    this.lock,
-                    {
-                        lastFix: () => this.lastFix,
-                        jumpTo: (pos, opts) => this.jumpTo(pos, opts),
-                        onGeolocate: (e) => {
-                            if (geoCfg.pinAsWell !== false) {
-                                const { latitude, longitude, accuracy } = e.coords;
-                                this.marker.setLngLat([longitude, latitude]);
-                                this.lat = latitude;
-                                this.lng = longitude;
-                                this.commitCoordinates({ lat: latitude, lng: longitude });
-                                this.lastFix = {
-                                    lat: latitude,
-                                    lng: longitude,
-                                    accuracy: typeof accuracy === 'number' ? accuracy : null,
-                                    timestamp: Date.now(),
-                                };
-                            }
-                        },
-                    }
-                );
+                addGeolocateControl(this.map, this.$refs.mapContainer || containerEl, geoCfg, limiters, this.lock, {
+                    lastFix: () => this.lastFix,
+                    jumpTo: (pos, opts) => this.jumpTo(pos, opts),
+                    onGeolocate: (e) => {
+                        if (geoCfg.pinAsWell !== false) {
+                            const { latitude, longitude, accuracy } = e.coords;
+                            this.marker.setLngLat([longitude, latitude]);
+                            this.lat = latitude;
+                            this.lng = longitude;
+                            this.commitCoordinates({ lat: latitude, lng: longitude });
+                            this.lastFix = {
+                                lat: latitude,
+                                lng: longitude,
+                                accuracy: typeof accuracy === 'number' ? accuracy : null,
+                                timestamp: Date.now(),
+                            };
+                        }
+                    },
+                });
             }
 
             // ? Navigation control buttons (guarded above)
@@ -129,7 +122,9 @@ export default function mapTilerPicker({ config }) {
                 );
                 // ? Hook to the guards
                 hookNavButtons(this.$refs.mapContainer || containerEl, this.map, limiters, this.lock);
-                this.map.on('styledata', () => hookNavButtons(this.$refs.mapContainer || containerEl, this.map, limiters, this.lock));
+                this.map.on('styledata', () =>
+                    hookNavButtons(this.$refs.mapContainer || containerEl, this.map, limiters, this.lock)
+                );
             }
             if (!this.config.rotationable) {
                 this.map.dragRotate.disable();
@@ -306,15 +301,26 @@ export default function mapTilerPicker({ config }) {
         // ? ===============
 
         setCoordinates(position) {
-            this.$wire.set(this.config.statePath, { lat: position.lat, lng: position.lng });
+            this.$wire.set(this.config.statePath, JSON.stringify({ lat: position.lat, lng: position.lng }));
         },
         getCoordinates() {
             let location = this.$wire.get(this.config.statePath);
-            if (!location || !location.lat || !location.lng) {
-                location = { lat: this.config.defaultLocation.lat, lng: this.config.defaultLocation.lng };
+            if (typeof location === 'string') {
+                try {
+                    location = JSON.parse(location);
+                } catch (e) {
+                    location = null;
+                }
             }
+
+            if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
+                location = {
+                    lat: this.config.defaultLocation.lat,
+                    lng: this.config.defaultLocation.lng,
+                };
+            }
+
             return { lat: location.lat, lng: location.lng };
         },
     };
 }
-
