@@ -18,7 +18,6 @@ export function buildStyles(customStyles = {}) {
 }
 
 export function setupSdk(cfg) {
-    // ? configure MapTiler SDK once
     if (cfg.language) cfg.language = cfg.language.toLowerCase();
 
     if (!cfg.apiKey) throw new Error('MapTiler API key is required');

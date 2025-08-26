@@ -1,7 +1,6 @@
 import * as maptilersdk from '@maptiler/sdk';
 import {
     throttle,
-    debounce,
     backoffDelays,
     sleep,
     isTransientNetworkError,
