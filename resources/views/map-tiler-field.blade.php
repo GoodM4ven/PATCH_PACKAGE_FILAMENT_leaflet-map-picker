@@ -83,10 +83,10 @@
                 <div class="relative">
                     <x-filament::input.wrapper suffix-icon="heroicon-m-magnifying-glass">
                         <x-filament::input
-                            type="text"
+                            :type="'text'"
                             x-model="$store.mt.searchQuery"
                             x-on:input="debounceSearch()"
-                            placeholder="{{ __('filament-map-tiler::filament-map-tiler.search_placeholder') }}"
+                            :placeholder="__('filament-map-tiler::filament-map-tiler.search_placeholder')"
                         />
                     </x-filament::input.wrapper>
                 </div>
@@ -108,13 +108,13 @@
                     <ul class="overflow-auto">
                         <template
                             x-for="(result, index) in $store.mt.localSearchResults"
-                            :key="index"
+                            x-bind:key="index"
                         >
                             <li class="transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-800">
                                 <button
                                     class="flex w-full items-start gap-3 px-4 py-3 text-left"
                                     type="button"
-                                    @click="selectLocationFromModal(result); $dispatch('close-modal', { id: 'location-search-modal' })"
+                                    x-on:click="selectLocationFromModal(result); $dispatch('close-modal', { id: 'location-search-modal' })"
                                 >
                                     <div class="mt-0.5 flex-shrink-0">
                                         <svg
@@ -178,7 +178,7 @@
             <x-slot name="footer">
                 <x-filament::button
                     color="gray"
-                    @click="$dispatch('close-modal', { id: 'location-search-modal' })"
+                    x-on:click="$dispatch('close-modal', { id: 'location-search-modal' })"
                 >
                     {{ __('filament-map-tiler::filament-map-tiler.search_cancel') }}
                 </x-filament::button>
