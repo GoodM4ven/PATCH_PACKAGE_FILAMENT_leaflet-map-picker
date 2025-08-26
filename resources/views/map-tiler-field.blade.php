@@ -20,10 +20,6 @@
                 $store.mt.searchQuery = '';
                 $store.mt.localSearchResults = []
             }
-            // $el.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'inline-block';
-        "
-        x-on:close-modal.window="
-            // $el.querySelector(`div[aria-labelledby='location-search-modal.heading']`).style.display = 'none';
         "
     >
         <div class="relative mx-auto w-full overflow-hidden rounded-lg bg-gray-50 shadow dark:bg-gray-700">
