@@ -197,6 +197,7 @@ export default function mapTilerPicker({ config }) {
         },
 
         setCoordinates(position) {
+            console.log('before infinity');
             this.$wire.set(this.config.statePath, { lat: position.lat, lng: position.lng });
         },
 
