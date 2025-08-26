@@ -13,7 +13,7 @@ return [
 
         'zoom_level' => [
             'min' => false,
-            'initial' => 5,
+            'initial' => 10,
             'max' => false,
         ],
 
