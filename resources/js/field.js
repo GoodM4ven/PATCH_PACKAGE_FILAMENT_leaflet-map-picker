@@ -21,7 +21,6 @@ export default function mapTilerPicker({ config }) {
     const cfg = config;
     setupSdk(cfg);
 
-    // keep heavy / circular stuff in closure vars (not exposed to Alpine/Livewire)
     const _styles = buildStyles(cfg.customStyles);
     const _limiters = createLimiters(cfg.rateLimit);
     let _map = null;
