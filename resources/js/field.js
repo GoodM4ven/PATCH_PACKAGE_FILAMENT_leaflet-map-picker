@@ -39,7 +39,7 @@ export default function mapTilerPicker({ config }) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
 
-            requestAnimationFrame(() => this.initMap());
+            this.initMap();
         },
 
         initMap() {
