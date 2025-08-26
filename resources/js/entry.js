@@ -5,7 +5,7 @@ import {
     createLock,
     createLimiters,
     createMarkerElement,
-    hookGeolocateButton,
+    addGeolocateControl,
     hookNavButtons,
     hookInteractionGuards,
     addStyleSwitcherControl,
@@ -90,31 +90,19 @@ export default function mapTilerEntry({ location, config }) {
 
             const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
-                const geo = new maptilersdk.GeolocateControl({
-                    trackUserLocation: true,
-                    positionOptions: { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
-                    fitBoundsOptions: { maxZoom: 15 },
-                });
-                this.map.addControl(geo, 'top-right');
-                hookGeolocateButton({ container: containerEl, geo, limiters, lock: this.lock });
-                geo.on('geolocate', (e) => {
-                    if (this.lock.isLocked()) return;
-                    const { latitude, longitude } = e.coords;
-                    this.map.jumpTo({ center: [longitude, latitude], zoom: Math.max(this.map.getZoom(), 15) });
-                });
-                if (geoCfg.runOnLoad) {
-                    this.map.on('load', () => {
-                        if (this.lock.isLocked()) return;
-                        const t = limiters.geolocate.try();
-                        if (!t.ok) {
-                            this.lock.lockFor(t.resetMs);
-                            return;
-                        }
-                        try {
-                            geo.trigger();
-                        } catch (_) {}
-                    });
-                }
+                addGeolocateControl(
+                    this.map,
+                    containerEl,
+                    geoCfg,
+                    limiters,
+                    this.lock,
+                    {
+                        onGeolocate: (e) => {
+                            const { latitude, longitude } = e.coords;
+                            this.map.jumpTo({ center: [longitude, latitude], zoom: Math.max(this.map.getZoom(), 15) });
+                        },
+                    }
+                );
             }
 
             this.map.on('load', () => this.applyLocaleIfNeeded());

@@ -216,6 +216,45 @@ export function hookGeolocateButton({ container, geo, limiters, lock, lastFix, j
     geo.on('error', () => (geoInFlight = false));
 }
 
+export function addGeolocateControl(map, container, geoCfg, limiters, lock, { onGeolocate, lastFix, jumpTo } = {}) {
+    const geo = new maptilersdk.GeolocateControl({
+        trackUserLocation: true,
+        positionOptions: { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
+        fitBoundsOptions: { maxZoom: 15 },
+    });
+    map.addControl(geo, 'top-right');
+
+    const hookOpts = { container, geo, limiters, lock };
+    if (lastFix) hookOpts.lastFix = lastFix;
+    if (jumpTo) hookOpts.jumpTo = jumpTo;
+    if (geoCfg && typeof geoCfg.cacheInMs === 'number') hookOpts.cacheMs = geoCfg.cacheInMs;
+    hookGeolocateButton(hookOpts);
+    map.on('styledata', () => hookGeolocateButton(hookOpts));
+
+    if (onGeolocate) {
+        geo.on('geolocate', (e) => {
+            if (lock.isLocked()) return;
+            onGeolocate(e);
+        });
+    }
+
+    if (geoCfg && geoCfg.runOnLoad) {
+        map.on('load', () => {
+            if (lock.isLocked()) return;
+            const t = limiters.geolocate.try();
+            if (!t.ok) {
+                lock.lockFor(t.resetMs);
+                return;
+            }
+            try {
+                geo.trigger();
+            } catch (_) {}
+        });
+    }
+
+    return geo;
+}
+
 export function hookNavButtons(container, map, limiters, lock) {
     const inBtn = container.querySelector('.maplibregl-ctrl-zoom-in');
     const outBtn = container.querySelector('.maplibregl-ctrl-zoom-out');
