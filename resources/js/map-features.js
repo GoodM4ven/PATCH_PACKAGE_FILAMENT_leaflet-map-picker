@@ -229,6 +229,286 @@ export function hookNavButtons(container, map, limiters, lock) {
     });
 }
 
+export function hookInteractionGuards(container, map, limiters, lock) {
+    map.__zoomTokenConsumed = false;
+    map.__panTokenConsumed = false;
+    let lastCenter = map.getCenter();
+    let lastZoom = map.getZoom();
+    let suppressZoom = false;
+
+    const panStartGuardMouse = (ev) => {
+        if (ev.button !== 0) return;
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+        if (lock.isLocked()) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation?.();
+            return;
+        }
+        if (!map.__panTokenConsumed) {
+            const t = limiters.cameraMove.try();
+            if (!t.ok) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                lock.lockFor(t.resetMs);
+                return;
+            }
+            map.__panTokenConsumed = true;
+        }
+    };
+
+    const panStartGuardPointer = (ev) => {
+        if (ev.isPrimary === false) return;
+        if (lock.isLocked()) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation?.();
+            return;
+        }
+        if (!map.__panTokenConsumed) {
+            const t = limiters.cameraMove.try();
+            if (!t.ok) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                lock.lockFor(t.resetMs);
+                return;
+            }
+            map.__panTokenConsumed = true;
+        }
+    };
+
+    const panStartGuardTouch = (ev) => {
+        const n = ev.touches ? ev.touches.length : 0;
+        if (n === 1) {
+            if (lock.isLocked()) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                return;
+            }
+            if (!map.__panTokenConsumed) {
+                const t = limiters.cameraMove.try();
+                if (!t.ok) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation?.();
+                    lock.lockFor(t.resetMs);
+                    return;
+                }
+                map.__panTokenConsumed = true;
+            }
+        }
+    };
+
+    container.addEventListener('mousedown', panStartGuardMouse, { capture: true });
+    container.addEventListener('pointerdown', panStartGuardPointer, { capture: true });
+    container.addEventListener('touchstart', panStartGuardTouch, { passive: false, capture: true });
+
+    const onWheelDom = (ev) => {
+        if (lock.isLocked()) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation?.();
+            return;
+        }
+        const t = limiters.zoom.try();
+        if (!t.ok) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation?.();
+            lock.lockFor(t.resetMs);
+            return;
+        }
+        map.__zoomTokenConsumed = true;
+    };
+    container.addEventListener('wheel', onWheelDom, { passive: false, capture: true });
+
+    const onTouchStartDom = (ev) => {
+        const n = ev.touches ? ev.touches.length : 0;
+        if (n >= 2) {
+            if (lock.isLocked()) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                return;
+            }
+            const t = limiters.zoom.try();
+            if (!t.ok) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                lock.lockFor(t.resetMs);
+                return;
+            }
+            map.__zoomTokenConsumed = true;
+        }
+    };
+
+    const onTouchMoveDom = (ev) => {
+        const n = ev.touches ? ev.touches.length : 0;
+        if (n >= 2 && lock.isLocked()) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation?.();
+        }
+    };
+
+    container.addEventListener('touchstart', onTouchStartDom, { passive: false, capture: true });
+    container.addEventListener('touchmove', onTouchMoveDom, { passive: false, capture: true });
+
+    map.on('dblclick', (e) => {
+        if (lock.isLocked()) {
+            e.preventDefault();
+            return;
+        }
+        const t = limiters.zoom.try();
+        if (!t.ok) {
+            e.preventDefault();
+            lock.lockFor(t.resetMs);
+            return;
+        }
+        map.__zoomTokenConsumed = true;
+    });
+
+    map.on('zoomend', () => {
+        if (map.__zoomTokenConsumed) {
+            map.__zoomTokenConsumed = false;
+            lastZoom = map.getZoom();
+            return;
+        }
+        if (suppressZoom) {
+            suppressZoom = false;
+            return;
+        }
+        if (lock.isLocked()) {
+            suppressZoom = true;
+            map.setZoom(lastZoom);
+            return;
+        }
+        const t = limiters.zoom.try();
+        if (!t.ok) {
+            suppressZoom = true;
+            map.setZoom(lastZoom);
+            lock.lockFor(t.resetMs);
+        } else lastZoom = map.getZoom();
+    });
+
+    const onKeyDown = (ev) => {
+        const k = ev.key;
+        if (k === '+' || k === '=' || k === '-') {
+            if (lock.isLocked()) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                return;
+            }
+            const t = limiters.zoom.try();
+            if (!t.ok) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                lock.lockFor(t.resetMs);
+                return;
+            }
+            map.__zoomTokenConsumed = true;
+        }
+        if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight') {
+            if (lock.isLocked()) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                return;
+            }
+            const t = limiters.cameraMove.try();
+            if (!t.ok) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation?.();
+                lock.lockFor(t.resetMs);
+                return;
+            }
+            map.__panTokenConsumed = true;
+            setTimeout(() => (map.__panTokenConsumed = false), 250);
+        }
+    };
+    container.addEventListener('keydown', onKeyDown, { capture: true });
+
+    map.on('dragstart', () => {
+        if (lock.isLocked()) {
+            try {
+                map.stop();
+            } catch (_) {}
+            map.setCenter(lastCenter);
+            return;
+        }
+        if (!map.__panTokenConsumed) {
+            const t = limiters.cameraMove.try();
+            if (!t.ok) {
+                try {
+                    map.stop();
+                } catch (_) {}
+                map.setCenter(lastCenter);
+                lock.lockFor(t.resetMs);
+                return;
+            }
+            map.__panTokenConsumed = true;
+        }
+    });
+
+    map.on('dragend', () => {
+        map.__panTokenConsumed = false;
+        lastCenter = map.getCenter();
+    });
+
+    map.on('moveend', (e) => {
+        if (lock.isLocked()) return;
+        if (e.originalEvent) {
+            lastCenter = map.getCenter();
+        }
+    });
+}
+
+export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
+    class TileControl {
+        onAdd(mp) {
+            this.map = mp;
+            this.container = document.createElement('div');
+            this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
+            if (cfg.style_switcher_label) {
+                const label = document.createElement('label');
+                label.textContent = cfg.style_switcher_label;
+                this.container.appendChild(label);
+            }
+            const select = document.createElement('select');
+            Object.keys(styles).forEach((key) => {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = formatStyleName(key);
+                if (key === cfg.style) option.selected = true;
+                select.appendChild(option);
+            });
+            select.onchange = (e) => {
+                if (lock && lock.isLocked()) return;
+                const name = e.target.value;
+                if (setStyle) setStyle(name);
+                else {
+                    const style = styles[name] || maptilersdk.MapStyle.STREETS;
+                    map.setStyle(style);
+                }
+            };
+            this.container.appendChild(select);
+            return this.container;
+        }
+        onRemove() {
+            if (this.container && this.container.parentNode) this.container.parentNode.removeChild(this.container);
+            this.map = undefined;
+        }
+    }
+    map.addControl(new TileControl(), 'top-right');
+}
+
 function forceArabicTitlesFallback(container, dict = {}) {
     const set = (sel, title) => {
         const el = container.querySelector(sel);

@@ -9,12 +9,13 @@ import {
     buildStyles,
     applyLocale,
     setupSdk,
-    formatStyleName,
     createLock,
     createLimiters,
     createMarkerElement,
     hookGeolocateButton,
     hookNavButtons,
+    hookInteractionGuards,
+    addStyleSwitcherControl,
 } from './map-features.js';
 
 export default function mapTilerPicker({ config }) {
@@ -72,149 +73,11 @@ export default function mapTilerPicker({ config }) {
             map = new maptilersdk.Map(mapOptions);
             lock.attachMap(map);
 
-            // ? Intercepting interactions at the DOM layer to beat handlers
-            map.__zoomTokenConsumed = false; // ? true when a zoom token was taken before zoomend
-            map.__panTokenConsumed = false; // ? true when a pan token was taken at drag start
             const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
-            let lastCenter = map.getCenter();
-
-            // ? Capture cameraMove token on pan-starting gesture
-            const panStartGuardMouse = (ev) => {
-                // ? Left-click button only
-                if (ev.button !== 0) return;
-                if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-                if (lock.isLocked()) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation?.();
-                    return;
-                }
-                if (!map.__panTokenConsumed) {
-                    const t = limiters.cameraMove.try();
-                    if (!t.ok) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        lock.lockFor(t.resetMs);
-                        return;
-                    }
-                    map.__panTokenConsumed = true;
-                }
-            };
-            const panStartGuardPointer = (ev) => {
-                // ? Treat primary-pointer as a left-click too
-                if (ev.isPrimary === false) return;
-                if (lock.isLocked()) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation?.();
-                    return;
-                }
-                if (!map.__panTokenConsumed) {
-                    const t = limiters.cameraMove.try();
-                    if (!t.ok) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        lock.lockFor(t.resetMs);
-                        return;
-                    }
-                    map.__panTokenConsumed = true;
-                }
-            };
-            const panStartGuardTouch = (ev) => {
-                const n = ev.touches ? ev.touches.length : 0;
-                // ? Single-finger panning gesture; while pinching is handled in zoom guards
-                if (n === 1) {
-                    if (lock.isLocked()) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        return;
-                    }
-                    if (!map.__panTokenConsumed) {
-                        const t = limiters.cameraMove.try();
-                        if (!t.ok) {
-                            ev.preventDefault();
-                            ev.stopPropagation();
-                            ev.stopImmediatePropagation?.();
-                            lock.lockFor(t.resetMs);
-                            return;
-                        }
-                        map.__panTokenConsumed = true;
-                    }
-                }
-            };
-            containerEl.addEventListener('mousedown', panStartGuardMouse, { capture: true });
-            containerEl.addEventListener('pointerdown', panStartGuardPointer, { capture: true });
-            containerEl.addEventListener('touchstart', panStartGuardTouch, { passive: false, capture: true });
-
-            // ? Consuming wheel/trackpad token on every wheel step
-            const onWheelDom = (ev) => {
-                if (lock.isLocked()) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation?.();
-                    return;
-                }
-                const t = limiters.zoom.try();
-                if (!t.ok) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation?.();
-                    lock.lockFor(t.resetMs);
-                    return;
-                }
-                map.__zoomTokenConsumed = true;
-            };
-            containerEl.addEventListener('wheel', onWheelDom, { passive: false, capture: true });
-
-            // ? Pinching zoom (touchstart and touchmove)
-            const onTouchStartDom = (ev) => {
-                const n = ev.touches ? ev.touches.length : 0;
-                if (n >= 2) {
-                    if (lock.isLocked()) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        return;
-                    }
-                    const t = limiters.zoom.try();
-                    if (!t.ok) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        lock.lockFor(t.resetMs);
-                        return;
-                    }
-                    map.__zoomTokenConsumed = true;
-                }
-            };
-            const onTouchMoveDom = (ev) => {
-                const n = ev.touches ? ev.touches.length : 0;
-                if (n >= 2 && lock.isLocked()) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation?.();
-                }
-            };
-            containerEl.addEventListener('touchstart', onTouchStartDom, { passive: false, capture: true });
-            containerEl.addEventListener('touchmove', onTouchMoveDom, { passive: false, capture: true });
-
-            // ? Double-clicking zoom
-            map.on('dblclick', (e) => {
-                if (lock.isLocked()) {
-                    e.preventDefault();
-                    return;
-                }
-                const t = limiters.zoom.try();
-                if (!t.ok) {
-                    e.preventDefault();
-                    lock.lockFor(t.resetMs);
-                    return;
-                }
-                map.__zoomTokenConsumed = true;
-            });
+            hookInteractionGuards(containerEl, map, limiters, lock);
+            if (this.config.showStyleSwitcher) {
+                addStyleSwitcherControl(map, styles, this.config, lock, (s) => this.setStyle(s));
+            }
 
             // ? Throttled coordinate updates (fallsback to global lock when violated)
             this.commitCoordinates = throttle((position) => {
@@ -332,113 +195,6 @@ export default function mapTilerPicker({ config }) {
                     this.markerMoved({ latLng: marker.getLngLat() });
                 });
             }
-
-            // ? Zooming camera
-            let lastZoom = map.getZoom();
-            let suppressZoom = false;
-            map.on('zoomend', () => {
-                // ? When rate-limited
-                if (map.__zoomTokenConsumed) {
-                    map.__zoomTokenConsumed = false;
-                    lastZoom = map.getZoom(); // ? Accept the zoom result before locking
-                    return;
-                }
-                if (suppressZoom) {
-                    suppressZoom = false;
-                    return;
-                }
-                if (lock.isLocked()) {
-                    suppressZoom = true;
-                    map.setZoom(lastZoom);
-                    return;
-                }
-                const t = limiters.zoom.try();
-                if (!t.ok) {
-                    suppressZoom = true;
-                    map.setZoom(lastZoom);
-                    lock.lockFor(t.resetMs);
-                } else lastZoom = map.getZoom();
-            });
-
-            // ? Guarding against keyboard buttons as possible interaction tricks
-            const onKeyDown = (ev) => {
-                const k = ev.key;
-                // ? Possible zooming buttons
-                if (k === '+' || k === '=' || k === '-') {
-                    if (lock.isLocked()) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        return;
-                    }
-                    const t = limiters.zoom.try();
-                    if (!t.ok) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        lock.lockFor(t.resetMs);
-                        return;
-                    }
-                    map.__zoomTokenConsumed = true;
-                }
-                // ? Arrow keys for panning the camera
-                if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight') {
-                    if (lock.isLocked()) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        return;
-                    }
-                    const t = limiters.cameraMove.try();
-                    if (!t.ok) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        ev.stopImmediatePropagation?.();
-                        lock.lockFor(t.resetMs);
-                        return;
-                    }
-                    map.__panTokenConsumed = true;
-                    // ? Reset to allow subsequent arrow key to count as a new gesture?
-                    setTimeout(() => (map.__panTokenConsumed = false), 250);
-                }
-            };
-            containerEl.addEventListener('keydown', onKeyDown, { capture: true });
-
-            // ? Guard the drag-start event, when pan-start guard doesn't handle things
-            map.on('dragstart', () => {
-                if (lock.isLocked()) {
-                    try {
-                        map.stop();
-                    } catch (_) {}
-                    map.setCenter(lastCenter);
-                    return;
-                }
-                if (!map.__panTokenConsumed) {
-                    const t = limiters.cameraMove.try();
-                    if (!t.ok) {
-                        try {
-                            map.stop();
-                        } catch (_) {}
-                        map.setCenter(lastCenter);
-                        lock.lockFor(t.resetMs);
-                        return;
-                    }
-                    map.__panTokenConsumed = true;
-                }
-            });
-
-            // ? When dragging finishes, reset token and save position
-            map.on('dragend', () => {
-                map.__panTokenConsumed = false;
-                lastCenter = map.getCenter();
-            });
-            map.on('moveend', (e) => {
-                if (lock.isLocked()) return;
-                // ? Only counts user-driven moves
-                if (e.originalEvent) {
-                    lastCenter = map.getCenter();
-                }
-            });
 
             // ? Style and localize
             map.on('load', () => this.applyLocaleIfNeeded());
@@ -628,38 +384,6 @@ export default function mapTilerPicker({ config }) {
                 }
             }
             map.addControl(new SearchControl(), 'top-left');
-        },
-
-        addStyleSwitcherControl() {
-            const self = this;
-            class TileControl {
-                onAdd(mp) {
-                    this.map = mp;
-                    this.container = document.createElement('div');
-                    this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
-                    const label = document.createElement('label');
-                    label.textContent = self.config.style_switcher_label;
-                    const select = document.createElement('select');
-                    Object.keys(styles).forEach((key) => {
-                        const option = document.createElement('option');
-                        option.value = key;
-                        option.textContent = formatStyleName(key);
-                        if (key === self.config.style) option.selected = true;
-                        select.appendChild(option);
-                    });
-                    select.onchange = (e) => {
-                        if (!lock.isLocked()) self.setStyle(e.target.value);
-                    };
-                    this.container.appendChild(label);
-                    this.container.appendChild(select);
-                    return this.container;
-                }
-                onRemove() {
-                    if (this.container && this.container.parentNode) this.container.parentNode.removeChild(this.container);
-                    this.map = undefined;
-                }
-            }
-            map.addControl(new TileControl(), 'top-right');
         },
 
         // ? ============
