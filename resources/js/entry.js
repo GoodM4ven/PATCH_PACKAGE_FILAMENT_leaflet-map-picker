@@ -1,18 +1,41 @@
 import * as maptilersdk from '@maptiler/sdk';
-import { buildStyles, applyLocale, setupSdk } from './map-features.js';
+import {
+    buildStyles,
+    applyLocale,
+    setupSdk,
+    formatStyleName,
+    createLock,
+    createLimiters,
+    createMarkerElement,
+    hookGeolocateButton,
+    hookNavButtons,
+} from './map-features.js';
 
 export default function mapTilerEntry({ location, config }) {
+    const cfg = config;
+    setupSdk(cfg);
+    const lock = createLock(cfg);
+    const limiters = createLimiters(
+        cfg.rateLimit || {
+            interval: 60000,
+            geolocate: Infinity,
+            zoom: Infinity,
+            pinMove: Infinity,
+            cameraMove: Infinity,
+            search: Infinity,
+        }
+    );
     return {
         map: null,
         marker: null,
         location: null,
-        config,
+        config: cfg,
 
         styles: {},
 
         init() {
             this.location = location;
-            setupSdk(this.config);
+            lock.initUI(this.$refs.mapContainer);
             this.styles = buildStyles(this.config.customStyles);
             this.initMap();
         },
@@ -31,11 +54,13 @@ export default function mapTilerEntry({ location, config }) {
                 maxBounds: this.config.maxBounds || undefined,
             };
 
-            this.map = new maptilersdk.Map(mapOptions);
+            lock.attachMap(this.map = new maptilersdk.Map(mapOptions));
+            this.map.__zoomTokenConsumed = false;
+            const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
 
             const markerOptions = {};
             if (this.config.customMarker) {
-                markerOptions.element = this.createMarkerElement(this.config.customMarker);
+                markerOptions.element = createMarkerElement(this.config.customMarker);
             }
             this.marker = new maptilersdk.Marker(markerOptions).setLngLat(coords).addTo(this.map);
 
@@ -51,6 +76,8 @@ export default function mapTilerEntry({ location, config }) {
                     }),
                     'top-right'
                 );
+                hookNavButtons(containerEl, this.map, limiters, lock);
+                this.map.on('styledata', () => hookNavButtons(containerEl, this.map, limiters, lock));
             }
             if (!this.config.rotationable) {
                 this.map.dragRotate.disable();
@@ -72,31 +99,29 @@ export default function mapTilerEntry({ location, config }) {
                     fitBoundsOptions: { maxZoom: 15 },
                 });
                 this.map.addControl(geo, 'top-right');
+                hookGeolocateButton({ container: containerEl, geo, limiters, lock });
                 geo.on('geolocate', (e) => {
+                    if (lock.isLocked()) return;
                     const { latitude, longitude } = e.coords;
                     this.map.jumpTo({ center: [longitude, latitude], zoom: Math.max(this.map.getZoom(), 15) });
                 });
                 if (geoCfg.runOnLoad) {
                     this.map.on('load', () => {
-                        try { geo.trigger(); } catch (_) {}
+                        if (lock.isLocked()) return;
+                        const t = limiters.geolocate.try();
+                        if (!t.ok) {
+                            lock.lockFor(t.resetMs);
+                            return;
+                        }
+                        try {
+                            geo.trigger();
+                        } catch (_) {}
                     });
                 }
             }
 
             this.map.on('load', () => applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer));
             this.map.on('styledata', () => applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer));
-        },
-
-        createMarkerElement(options) {
-            const el = document.createElement('div');
-            if (options.className) el.className = options.className;
-            if (options.iconUrl) {
-                el.style.backgroundImage = `url('${options.iconUrl}')`;
-                el.style.width = (options.iconSize?.[0] || 25) + 'px';
-                el.style.height = (options.iconSize?.[1] || 41) + 'px';
-                el.style.backgroundSize = 'contain';
-            }
-            return el;
         },
 
         setStyle(styleName) {
@@ -112,10 +137,10 @@ export default function mapTilerEntry({ location, config }) {
                     this.container = document.createElement('div');
                     this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
                     const select = document.createElement('select');
-                    Object.keys(self.styles).forEach(key => {
+                    Object.keys(self.styles).forEach((key) => {
                         const option = document.createElement('option');
                         option.value = key;
-                        option.textContent = self.formatStyleName(key);
+                        option.textContent = formatStyleName(key);
                         if (key === self.config.style) option.selected = true;
                         select.appendChild(option);
                     });
@@ -129,14 +154,6 @@ export default function mapTilerEntry({ location, config }) {
                 }
             }
             this.map.addControl(new TileControl(), 'top-right');
-        },
-
-        formatStyleName(name) {
-            return name
-                .replace(/\./g, ' ')
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, str => str.toUpperCase())
-                .trim();
         },
 
         getCoordinates() {
