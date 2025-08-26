@@ -164,11 +164,11 @@ export default function mapTilerPicker({ config }) {
         applyLocaleIfNeeded,
 
         jumpTo(position, { zoom } = {}) {
-            this.marker.setLngLat([position.lng, position.lat]);
+            _marker.setLngLat([position.lng, position.lat]);
             if (typeof zoom === 'number') {
-                this.map.jumpTo({ center: [position.lng, position.lat], zoom });
+                _map.jumpTo({ center: [position.lng, position.lat], zoom });
             } else {
-                this.map.jumpTo({ center: [position.lng, position.lat] });
+                _map.jumpTo({ center: [position.lng, position.lat] });
             }
             this.lat = position.lat;
             this.lng = position.lng;
@@ -179,25 +179,24 @@ export default function mapTilerPicker({ config }) {
             this.lat = p.lat;
             this.lng = p.lng;
             this.commitCoordinates({ lat: this.lat, lng: this.lng });
-            this.marker.setLngLat([this.lng, this.lat]);
-            this.map.easeTo({ center: [this.lng, this.lat] });
+            _marker.setLngLat([this.lng, this.lat]);
+            _map.easeTo({ center: [this.lng, this.lat] });
         },
 
         updateMapFromAlpine() {
             const location = this.getCoordinates();
-            const pos = this.marker.getLngLat();
+            const pos = _marker.getLngLat();
             if (location.lat !== pos.lat || location.lng !== pos.lng) this.updateMap(location);
         },
 
         updateMap(position) {
-            this.marker.setLngLat([position.lng, position.lat]);
-            this.map.easeTo({ center: [position.lng, position.lat] });
+            _marker.setLngLat([position.lng, position.lat]);
+            _map.easeTo({ center: [position.lng, position.lat] });
             this.lat = position.lat;
             this.lng = position.lng;
         },
 
         setCoordinates(position) {
-            console.log('before infinity');
             this.$wire.set(this.config.statePath, { lat: position.lat, lng: position.lng });
         },
 
@@ -227,14 +226,14 @@ export default function mapTilerPicker({ config }) {
                 st.isSearching = false;
                 return;
             }
-            if (this.lock.isLocked()) {
+            if (_lock.isLocked()) {
                 st.isSearching = false;
                 return;
             }
             const t = limiters.search.try();
             if (!t.ok) {
                 st.isSearching = false;
-                this.lock.lockFor(t.resetMs);
+                _lock.lockFor(t.resetMs);
                 return;
             }
             try {
@@ -249,9 +248,9 @@ export default function mapTilerPicker({ config }) {
 
         selectLocationFromModal(result) {
             const [lng, lat] = result.center || result.geometry.coordinates;
-            this.map.setCenter([lng, lat]);
-            this.map.setZoom(15);
-            this.marker.setLngLat([lng, lat]);
+            _map.setCenter([lng, lat]);
+            _map.setZoom(15);
+            _marker.setLngLat([lng, lat]);
             this.lat = lat;
             this.lng = lng;
             this.commitCoordinates({ lat, lng });
@@ -265,7 +264,7 @@ export default function mapTilerPicker({ config }) {
             const self = this;
             class SearchControl {
                 onAdd(mp) {
-                    this.map = mp;
+                    _map = mp;
                     this.container = document.createElement('div');
                     this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
                     const btn = document.createElement('button');
@@ -284,10 +283,10 @@ export default function mapTilerPicker({ config }) {
                 }
                 onRemove() {
                     if (this.container && this.container.parentNode) this.container.parentNode.removeChild(this.container);
-                    this.map = undefined;
+                    _map = undefined;
                 }
             }
-            this.map.addControl(new SearchControl(), 'top-left');
+            _map.addControl(new SearchControl(), 'top-left');
         },
     };
 }
