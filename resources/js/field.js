@@ -14,7 +14,7 @@ import {
     applyLocale,
 } from './map-features.js';
 
-export default function mapTilerPicker({ config, stateLat, stateLng }) {
+export default function mapTilerPicker({ config }) {
     // ---- keep all heavy objects OUT of Alpine reactivity
     const cfg = { ...config }; // shallow copy only primitives you need
     setupSdk(cfg);
@@ -30,27 +30,23 @@ export default function mapTilerPicker({ config, stateLat, stateLng }) {
     const S = () => Alpine.store('mt');
 
     return {
-        // reactive data: primitives only (+ entangled proxy)
+        // reactive data: primitives only
         lastFix: null,
-        stateLat, // ✅ scalar entangle
-        stateLng, // ✅ scalar entangle
         lat: null,
         lng: null,
         commitCoordinates: null,
         styleName: cfg.style, // expose only the current style string
+        config: cfg,
 
         init() {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
-            // watch individual properties so we don't depend on object identity
-            this.$watch('stateLat', (v) => this.onStateChanged({ lat: v, lng: this.stateLng }));
-            this.$watch('stateLng', (v) => this.onStateChanged({ lat: this.stateLat, lng: v }));
             this.initMap();
         },
 
         initMap() {
-            const initial = this.getInitialCoordinates();
+            const initial = this.getCoordinates();
             const center = [initial.lng, initial.lat];
             const mapOptions = {
                 container: this.$refs.mapContainer,
@@ -85,7 +81,7 @@ export default function mapTilerPicker({ config, stateLat, stateLng }) {
             this.commitCoordinates = throttle((position) => {
                 if (lock.isLocked()) return; // ? Banner is already running
                 const t = limiters.pinMove.try();
-                if (t.ok) this.pushToState(position);
+                if (t.ok) this.setCoordinates(position);
                 else lock.lockFor(t.resetMs);
             }, 300);
 
@@ -151,7 +147,7 @@ export default function mapTilerPicker({ config, stateLat, stateLng }) {
             // ? Initial positioning
             this.lat = initial.lat;
             this.lng = initial.lng;
-            this.pushToState(initial);
+            this.setCoordinates(initial);
 
             // ? Clicking to move
             if (cfg.clickable) {
@@ -329,25 +325,20 @@ export default function mapTilerPicker({ config, stateLat, stateLng }) {
         // ? Livewire Updates
         // ? ===============
 
-        // ===== Livewire/Filament state bridge (no direct $wire calls) =====
-        onStateChanged(val) {
-            // when server (or another field) changes the state, reflect it on the map
-            if (!val || typeof val.lat !== 'number' || typeof val.lng !== 'number') return;
-            const pos = marker ? marker.getLngLat() : null;
-            if (!pos || pos.lat !== val.lat || pos.lng !== val.lng) {
-                this.updateMap({ lat: val.lat, lng: val.lng });
+        setCoordinates(position) {
+            this.$wire.set(cfg.statePath, { lat: position.lat, lng: position.lng });
+        },
+        getCoordinates() {
+            let location = this.$wire.get(cfg.statePath);
+            if (!location || !location.lat || !location.lng) {
+                location = { ...cfg.defaultLocation };
             }
+            return { lat: Number(location.lat), lng: Number(location.lng) };
         },
-        pushToState(position) {
-            // IMPORTANT: mutate entangled proxy props; do NOT replace the object
-            if (typeof position.lat === 'number') this.stateLat = position.lat;
-            if (typeof position.lng === 'number') this.stateLng = position.lng;
-        },
-        getInitialCoordinates() {
-            const lat = Number(this.stateLat);
-            const lng = Number(this.stateLng);
-            if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
-            return { ...cfg.defaultLocation };
+        updateMapFromAlpine() {
+            const location = this.getCoordinates();
+            const pos = marker.getLngLat();
+            if (location.lat !== pos.lat || location.lng !== pos.lng) this.updateMap(location);
         },
     };
 }
