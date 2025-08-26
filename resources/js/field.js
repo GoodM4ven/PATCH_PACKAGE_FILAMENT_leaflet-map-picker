@@ -21,6 +21,7 @@ export default function mapTilerPicker({ config, state }) {
     // Keep SDK objects out of Alpine reactivity
     let map = null;
     let marker = null;
+    const lock = createLock(cfg);
 
     const limiters = createLimiters(cfg.rateLimit);
 
@@ -29,7 +30,6 @@ export default function mapTilerPicker({ config, state }) {
 
     return {
         styles: buildStyles(cfg.customStyles),
-        lock: createLock(cfg),
         lastFix: null,
         lat: null,
         lng: null,
@@ -66,30 +66,30 @@ export default function mapTilerPicker({ config, state }) {
             };
 
             // ? Prepare locking overlay and banner
-            this.lock.initUI(this.$refs.mapContainer);
+            lock.initUI(this.$refs.mapContainer);
 
             map = new maptilersdk.Map(mapOptions);
-            this.lock.attachMap(map);
+            lock.attachMap(map);
 
             const containerEl = map.getCanvasContainer?.() || map.getCanvas?.() || this.$refs.mapContainer;
-            hookInteractionGuards(containerEl, map, limiters, this.lock);
+            hookInteractionGuards(containerEl, map, limiters, lock);
             if (this.config.showStyleSwitcher) {
-                addStyleSwitcherControl(map, this.styles, this.config, this.lock, (s) => this.setStyle(s));
+                addStyleSwitcherControl(map, this.styles, this.config, lock, (s) => this.setStyle(s));
             }
 
             // ? Throttled coordinate updates (fallsback to global lock when violated)
             this.commitCoordinates = throttle((position) => {
-                if (this.lock.isLocked()) return; // ? Banner is already running
+                if (lock.isLocked()) return; // ? Banner is already running
                 const t = limiters.pinMove.try();
                 if (t.ok) this.pushToState(position);
-                else this.lock.lockFor(t.resetMs);
+                else lock.lockFor(t.resetMs);
             }, 300);
 
             // ? Guards geolocate button: intercept FIRST, then decide to lock, rate-limit, or trigger
             // ? Geolocate button (guarded above)
             const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
-                addGeolocateControl(map, this.$refs.mapContainer || containerEl, geoCfg, limiters, this.lock, {
+                addGeolocateControl(map, this.$refs.mapContainer || containerEl, geoCfg, limiters, lock, {
                     lastFix: () => this.lastFix,
                     jumpTo: (pos, opts) => this.jumpTo(pos, opts),
                     onGeolocate: (e) => {
@@ -121,8 +121,8 @@ export default function mapTilerPicker({ config, state }) {
                     'top-right'
                 );
                 // ? Hook to the guards
-                hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, this.lock);
-                map.on('styledata', () => hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, this.lock));
+                hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, lock);
+                map.on('styledata', () => hookNavButtons(this.$refs.mapContainer || containerEl, map, limiters, lock));
             }
             if (!this.config.rotationable) {
                 map.dragRotate.disable();
@@ -152,14 +152,14 @@ export default function mapTilerPicker({ config, state }) {
             // ? Clicking to move
             if (this.config.clickable) {
                 map.on('click', (e) => {
-                    if (this.lock.isLocked()) return;
+                    if (lock.isLocked()) return;
                     this.markerMoved({ latLng: e.lngLat });
                 });
             }
             // ? Dragging to move
             if (this.config.draggable) {
                 marker.on('dragend', () => {
-                    if (this.lock.isLocked()) return;
+                    if (lock.isLocked()) return;
                     this.markerMoved({ latLng: marker.getLngLat() });
                 });
             }
@@ -181,7 +181,7 @@ export default function mapTilerPicker({ config, state }) {
             this.recreateMapInstance();
         },
         setStyle(styleName) {
-            if (this.lock && this.lock.isLocked && this.lock.isLocked()) return;
+            if (lock && lock.isLocked && lock.isLocked()) return;
             this.config.style = styleName;
             const style = this.styles[styleName] || maptilersdk.MapStyle.STREETS;
             try {
@@ -288,7 +288,7 @@ export default function mapTilerPicker({ config, state }) {
                     this.map = undefined;
                 }
             }
-            this.map.addControl(new SearchControl(), 'top-left');
+            map.addControl(new SearchControl(), 'top-left');
         },
 
         // ? ============
