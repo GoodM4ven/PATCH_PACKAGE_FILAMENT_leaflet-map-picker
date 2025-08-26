@@ -28,7 +28,13 @@ class MapTilerField extends Field
     {
         parent::setUp();
 
-        $this->afterStateHydrated(fn() => $this->ensureValidApiKey());
+        $this->afterStateHydrated(function ($component, $state) {
+            $this->ensureValidApiKey();
+
+            if (!is_array($state) || !isset($state['lat'], $state['lng'])) {
+                $component->state($this->getDefaultLocation()); // ['lat'=>..,'lng'=>..]
+            }
+        });
     }
 
     public function getMapConfig(): array
