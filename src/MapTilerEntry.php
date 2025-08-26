@@ -20,21 +20,30 @@ class MapTilerEntry extends Entry
         $this->ensureValidApiKey();
     }
 
+    public function getListeners(?string $event = null): array
+    {
+        return array_merge(parent::getListeners($event), [
+            $this->getRateLimitEvent() => 'handleRateLimit',
+        ]);
+    }
+
     public function getMapConfig(): array
     {
         return [
             'apiKey' => $this->getApiKey(),
             'language' => $this->getLanguage(),
-            'controlTranslations' => __('filament-map-tiler::filament-map-tiler.controls'),
+            'controlTranslations' => $this->getControlTranslations(),
             'defaultLocation' => $this->getDefaultLocation(),
             'minZoomLevel' => $this->getMinZoomLevel(),
-            'defaultZoom' => $this->getDefaultZoomLevel(),
+            'initialZoomLevel' => $this->getInitialZoomLevel(),
             'maxZoomLevel' => $this->getMaxZoomLevel(),
+            'rateLimit' => $this->getRateLimit(),
+            'rateLimitEvent' => $this->getRateLimitEvent(),
             'zoomable' => $this->getZoomable(),
             'geolocate' => $this->getGeolocate(),
             'style' => $this->getStyle(),
             'showStyleSwitcher' => $this->getShowStyleSwitcher(),
-            'style_switcher_label' => __('filament-map-tiler::filament-map-tiler.map_style'),
+            'styleSwitcherLabel' => __('filament-map-tiler::filament-map-tiler.map_style'),
             'customStyles' => $this->getCustomStyles(),
             'customMarker' => $this->getCustomMarker(),
             'markerIconPath' => $this->getMarkerIconPath(),
@@ -42,7 +51,6 @@ class MapTilerEntry extends Entry
             'maxBounds' => $this->getMaxBounds(),
             'rotationable' => $this->getRotationable(),
             'hash' => $this->getHash(),
-            'rateLimit' => $this->getMapTilerConfig('defaults.rate_limit_values'),
         ];
     }
 }

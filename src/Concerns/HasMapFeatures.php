@@ -18,9 +18,13 @@ trait HasMapFeatures
 
     protected int|Closure|null $minZoomLevel = null;
 
-    protected int|Closure|null $defaultZoomLevel = null;
+    protected int|Closure|null $initialZoomLevel = null;
 
     protected int|Closure|null $maxZoomLevel = null;
+
+    protected array|Closure $rateLimit = [];
+
+    protected ?Closure $onRateLimit = null;
 
     protected bool|Closure $zoomable = true;
 
@@ -124,6 +128,20 @@ trait HasMapFeatures
         return $lang;
     }
 
+    public function getControlTranslations(): array
+    {
+        $translations = __(
+            'filament-map-tiler::filament-map-tiler.controls',
+            locale: filled($code = str($this->getLanguage())->substr(0, 2)->value()) ? $code : null,
+        );
+
+        if (!is_array($translations)) {
+            throw new RuntimeException("Missing translations array: filament-map-tiler.controls");
+        }
+
+        return $translations;
+    }
+
     public function defaultLocation(array|Closure $defaultLocation): static
     {
         $this->defaultLocation = $defaultLocation;
@@ -168,16 +186,16 @@ trait HasMapFeatures
         return $value === false ? null : (int) $value;
     }
 
-    public function defaultZoomLevel(int|Closure $defaultZoomLevel): static
+    public function initialZoomLevel(int|Closure $initialZoomLevel): static
     {
-        $this->defaultZoomLevel = $defaultZoomLevel;
+        $this->initialZoomLevel = $initialZoomLevel;
 
         return $this;
     }
 
-    public function getDefaultZoomLevel(): int
+    public function getInitialZoomLevel(): int
     {
-        return (int) ($this->evaluate($this->defaultZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.initial'));
+        return (int) ($this->evaluate($this->initialZoomLevel) ?? $this->getMapTilerConfig('defaults.zoom_level.initial'));
     }
 
     public function maxZoomLevel(int|Closure $maxZoomLevel): static
@@ -195,6 +213,50 @@ trait HasMapFeatures
         }
 
         return $value === false ? null : (int) $value;
+    }
+
+    public function rateLimit(array|Closure $limits): static
+    {
+        $this->rateLimit = $limits;
+
+        return $this;
+    }
+
+    public function getRateLimit(): array
+    {
+        $defaults = config('filament-map-tiler.rate_limit', [
+            'interval' => 60_000,
+            'geolocate' => 5,
+            'zoom' => 360,
+            'pinMove' => 60,
+            'cameraMove' => 80,
+            'search' => 10,
+        ]);
+
+        return array_merge($defaults, (array) $this->evaluate($this->rateLimit));
+    }
+
+    public function onRateLimit(Closure $callback): static
+    {
+        $this->onRateLimit = $callback;
+
+        return $this;
+    }
+
+    public function handleRateLimit(array $data): void
+    {
+        if (($data['statePath'] ?? null) !== $this->getStatePath()) {
+            return;
+        }
+
+        if ($this->onRateLimit) {
+            $this->evaluate($this->onRateLimit, $data);
+        }
+    }
+
+    public function getRateLimitEvent(): string
+    {
+        return 'map-tiler-rate-limit';
     }
 
     public function zoomable(bool|Closure $zoomable = true): static
