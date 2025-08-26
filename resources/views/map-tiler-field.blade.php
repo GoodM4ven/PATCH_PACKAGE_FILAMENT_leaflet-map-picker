@@ -73,7 +73,7 @@
             id="location-search-modal"
             slide-over
             width="md"
-            :displayClasses="'-mt-6'"
+            :displayClasses="''"
         >
             <x-slot name="heading">
                 {{ __('filament-map-tiler::filament-map-tiler.search_location') }}
