@@ -3,28 +3,20 @@ import {
     buildStyles,
     applyLocale,
     setupSdk,
-    formatStyleName,
     createLock,
     createLimiters,
     createMarkerElement,
     hookGeolocateButton,
     hookNavButtons,
+    hookInteractionGuards,
+    addStyleSwitcherControl,
 } from './map-features.js';
 
 export default function mapTilerEntry({ location, config }) {
     const cfg = config;
     setupSdk(cfg);
     const lock = createLock(cfg);
-    const limiters = createLimiters(
-        cfg.rateLimit || {
-            interval: 60000,
-            geolocate: Infinity,
-            zoom: Infinity,
-            pinMove: Infinity,
-            cameraMove: Infinity,
-            search: Infinity,
-        }
-    );
+    const limiters = createLimiters(cfg.rateLimit);
     return {
         map: null,
         marker: null,
@@ -55,8 +47,8 @@ export default function mapTilerEntry({ location, config }) {
             };
 
             lock.attachMap(this.map = new maptilersdk.Map(mapOptions));
-            this.map.__zoomTokenConsumed = false;
             const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
+            hookInteractionGuards(containerEl, this.map, limiters, lock);
 
             const markerOptions = {};
             if (this.config.customMarker) {
@@ -65,7 +57,7 @@ export default function mapTilerEntry({ location, config }) {
             this.marker = new maptilersdk.Marker(markerOptions).setLngLat(coords).addTo(this.map);
 
             if (this.config.showStyleSwitcher) {
-                this.addStyleSwitcherControl();
+                addStyleSwitcherControl(this.map, this.styles, this.config, lock, (s) => this.setStyle(s));
             }
             if (this.config.rotationable || this.config.zoomable) {
                 this.map.addControl(
@@ -129,32 +121,6 @@ export default function mapTilerEntry({ location, config }) {
             this.map.setStyle(style);
         },
 
-        addStyleSwitcherControl() {
-            const self = this;
-            class TileControl {
-                onAdd(map) {
-                    this.map = map;
-                    this.container = document.createElement('div');
-                    this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
-                    const select = document.createElement('select');
-                    Object.keys(self.styles).forEach((key) => {
-                        const option = document.createElement('option');
-                        option.value = key;
-                        option.textContent = formatStyleName(key);
-                        if (key === self.config.style) option.selected = true;
-                        select.appendChild(option);
-                    });
-                    select.onchange = e => self.setStyle(e.target.value);
-                    this.container.appendChild(select);
-                    return this.container;
-                }
-                onRemove() {
-                    this.container.parentNode.removeChild(this.container);
-                    this.map = undefined;
-                }
-            }
-            this.map.addControl(new TileControl(), 'top-right');
-        },
 
         getCoordinates() {
             let locationObj = this.location;

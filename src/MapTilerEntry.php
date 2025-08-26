@@ -42,6 +42,7 @@ class MapTilerEntry extends Entry
             'maxBounds' => $this->getMaxBounds(),
             'rotationable' => $this->getRotationable(),
             'hash' => $this->getHash(),
+            'rateLimit' => $this->getMapTilerConfig('defaults.rate_limit_values'),
         ];
     }
 }
