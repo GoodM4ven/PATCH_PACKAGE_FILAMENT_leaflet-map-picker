@@ -237,8 +237,13 @@ export default function mapTilerPicker({ config }) {
                 return;
             }
             try {
-                const results = await maptilersdk.geocoding.forward(query);
-                st.localSearchResults = results.features;
+                const results = await maptilersdk.geocoding.forward(query, {
+                    language: this.config.language || 'en',
+                });
+                st.localSearchResults = results.features.map((f) => ({
+                    ...f,
+                    label: f.place_name || f.text || f.properties?.name || '',
+                }));
             } catch (e) {
                 console.error('Search error:', e);
             } finally {

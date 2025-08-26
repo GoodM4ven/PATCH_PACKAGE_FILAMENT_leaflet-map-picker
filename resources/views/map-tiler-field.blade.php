@@ -141,7 +141,7 @@
                                     <div>
                                         <p
                                             class="text-sm font-medium text-gray-800 dark:text-gray-200"
-                                            x-text="result.display_name || result.name"
+                                            x-text="result.label"
                                         ></p>
                                     </div>
                                 </button>
