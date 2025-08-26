@@ -14,7 +14,7 @@ import {
     applyLocale,
 } from './map-features.js';
 
-export default function mapTilerPicker({ config, state }) {
+export default function mapTilerPicker({ config, stateLat, stateLng }) {
     // ---- keep all heavy objects OUT of Alpine reactivity
     const cfg = { ...config }; // shallow copy only primitives you need
     setupSdk(cfg);
@@ -32,19 +32,20 @@ export default function mapTilerPicker({ config, state }) {
     return {
         // reactive data: primitives only (+ entangled proxy)
         lastFix: null,
+        stateLat, // ✅ scalar entangle
+        stateLng, // ✅ scalar entangle
         lat: null,
         lng: null,
         commitCoordinates: null,
         styleName: cfg.style, // expose only the current style string
-        state, // entangled proxy – do NOT replace it
 
         init() {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
             // watch individual properties so we don't depend on object identity
-            this.$watch('state.lat', (v) => this.onStateChanged({ lat: v, lng: this.state?.lng }));
-            this.$watch('state.lng', (v) => this.onStateChanged({ lat: this.state?.lat, lng: v }));
+            this.$watch('stateLat', (v) => this.onStateChanged({ lat: v, lng: this.stateLng }));
+            this.$watch('stateLng', (v) => this.onStateChanged({ lat: this.stateLat, lng: v }));
             this.initMap();
         },
 
@@ -281,7 +282,7 @@ export default function mapTilerPicker({ config, state }) {
                         '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>';
                     btn.title = self.config.searchLocationButtonLabel || 'Search Location';
                     btn.onclick = () => {
-                        if (!self.lock.isLocked()) self.$dispatch('open-modal', { id: 'location-search-modal' });
+                        if (!lock.isLocked()) self.$dispatch('open-modal', { id: 'location-search-modal' });
                     };
                     this.container.appendChild(btn);
                     return this.container;
@@ -339,15 +340,14 @@ export default function mapTilerPicker({ config, state }) {
         },
         pushToState(position) {
             // IMPORTANT: mutate entangled proxy props; do NOT replace the object
-            if (typeof position.lat === 'number') this.state.lat = position.lat;
-            if (typeof position.lng === 'number') this.state.lng = position.lng;
+            if (typeof position.lat === 'number') this.stateLat = position.lat;
+            if (typeof position.lng === 'number') this.stateLng = position.lng;
         },
         getInitialCoordinates() {
-            const v = this.state;
-            if (!v || typeof v.lat !== 'number' || typeof v.lng !== 'number') {
-                return { ...cfg.defaultLocation };
-            }
-            return { lat: v.lat, lng: v.lng };
+            const lat = Number(this.stateLat);
+            const lng = Number(this.stateLng);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+            return { ...cfg.defaultLocation };
         },
     };
 }
