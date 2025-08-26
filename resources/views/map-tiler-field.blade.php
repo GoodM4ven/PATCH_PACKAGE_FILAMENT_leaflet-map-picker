@@ -15,7 +15,7 @@
         "
         x-data="mapTilerPicker({
             config: @js($getMapConfig()),
-            state: $wire.{{ $applyStateBindingModifiers("\$entangle('{$statePath}')") }},
+            state: $wire.{{ $applyStateBindingModifiers($entangle($getStatePath())) }},
         })"
         x-on:open-modal.window="
             if ($event.detail.id === 'location-search-modal') {
