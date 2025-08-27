@@ -59,12 +59,12 @@
                     <p
                         class="flex items-center justify-end text-left text-sm font-medium text-gray-700 dark:text-gray-200">
                         <a
-                            class="text-blue-600 hover:underline"
+                            class="transition-all hover:underline"
                             x-bind:href="lng && lat ? `https://www.google.com/maps/@${lat.toFixed(6)},${lng.toFixed(6)},17z` : '#'"
                             target="_blank"
                         >
                             <span x-text="lng ? lng.toFixed(6) : ''"></span>
-                            <span class="ps-[0.3rem]">,</span>
+                            <span class="pe-[0.3rem]">,</span>
                             <span x-text="lat ? lat.toFixed(6) : ''"></span>
                         </a>
                     </p>
