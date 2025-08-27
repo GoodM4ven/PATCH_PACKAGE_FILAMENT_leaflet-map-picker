@@ -19,7 +19,7 @@ import {
 export default function mapTilerEntry({ location, config }) {
     const cfg = config;
     setupSdk(cfg);
-    const limiters = createLimiters(cfg.rateLimit);
+    const limiters = createLimiters(cfg.rateLimits);
 
     return {
         map: null,

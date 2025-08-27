@@ -37,7 +37,7 @@ class MapTilerEntry extends Entry
             'minZoomLevel' => $this->getMinZoomLevel(),
             'initialZoomLevel' => $this->getInitialZoomLevel(),
             'maxZoomLevel' => $this->getMaxZoomLevel(),
-            'rateLimit' => $this->getRateLimit(),
+            'rateLimits' => $this->getRateLimits(),
             'rateLimitEvent' => $this->getRateLimitEvent(),
             'zoomable' => $this->getZoomable(),
             'geolocate' => $this->getGeolocate(),

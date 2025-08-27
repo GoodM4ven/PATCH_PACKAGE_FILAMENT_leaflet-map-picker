@@ -22,7 +22,7 @@ export default function mapTilerPicker({ config }) {
     setupSdk(cfg);
 
     const _styles = buildStyles(cfg.customStyles);
-    const _limiters = createLimiters(cfg.rateLimit);
+    const _limiters = createLimiters(cfg.rateLimits);
     let _map = null;
     let _marker = null;
     let _lock = createLock(cfg);

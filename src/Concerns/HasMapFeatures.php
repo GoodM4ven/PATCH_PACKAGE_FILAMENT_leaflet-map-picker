@@ -22,7 +22,7 @@ trait HasMapFeatures
 
     protected int|Closure|null $maxZoomLevel = null;
 
-    protected array|Closure $rateLimit = [];
+    protected array|Closure $rateLimits = [];
 
     protected ?Closure $onRateLimit = null;
 
@@ -215,14 +215,14 @@ trait HasMapFeatures
         return $value === false ? null : (int) $value;
     }
 
-    public function rateLimit(array|Closure $limits): static
+    public function rateLimits(array|Closure $limits): static
     {
-        $this->rateLimit = $limits;
+        $this->rateLimits = $limits;
 
         return $this;
     }
 
-    public function getRateLimit(): array
+    public function getRateLimits(): array
     {
         $defaults = config('filament-map-tiler.defaults.rate_limit_values', [
             'interval' => 60_000,
@@ -233,7 +233,7 @@ trait HasMapFeatures
             'search' => 10,
         ]);
 
-        return array_merge($defaults, (array) $this->evaluate($this->rateLimit));
+        return array_merge($defaults, (array) $this->evaluate($this->rateLimits));
     }
 
     public function onRateLimit(Closure $callback): static
