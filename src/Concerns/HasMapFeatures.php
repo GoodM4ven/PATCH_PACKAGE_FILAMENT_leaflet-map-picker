@@ -228,7 +228,7 @@ trait HasMapFeatures
             'interval' => 60_000,
             'geolocate' => 5,
             'zoom' => 360,
-            'pinMove' => 60,
+            'pinMove' => 10,
             'cameraMove' => 80,
             'search' => 10,
         ]);
