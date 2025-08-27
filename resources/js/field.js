@@ -234,6 +234,7 @@ export default function mapTilerPicker({ config }) {
             if (!t.ok) {
                 st.isSearching = false;
                 _lock.lockFor(t.resetMs);
+                this.$dispatch('close-modal', { id: 'location-search-modal' });
                 return;
             }
             try {
