@@ -224,7 +224,7 @@ trait HasMapFeatures
 
     public function getRateLimit(): array
     {
-        $defaults = config('filament-map-tiler.rate_limit', [
+        $defaults = config('filament-map-tiler.defaults.rate_limit_values', [
             'interval' => 60_000,
             'geolocate' => 5,
             'zoom' => 360,
