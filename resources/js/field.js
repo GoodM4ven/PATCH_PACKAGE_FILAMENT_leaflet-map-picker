@@ -26,7 +26,7 @@ export default function mapTilerPicker({ config }) {
     const _limiters = createLimiters(cfg.rateLimits);
     let _map = null;
     let _marker = null;
-    let _lock = createLock(cfg);
+    const _lock = createLock(cfg);
 
     return {
         lat: null,
@@ -36,6 +36,13 @@ export default function mapTilerPicker({ config }) {
         lastFix: null,
 
         init() {
+            Object.defineProperties(this, {
+                styles: { value: _styles },
+                map: { value: null, writable: true },
+                marker: { value: null, writable: true },
+                lock: { value: _lock },
+            });
+
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
@@ -66,6 +73,7 @@ export default function mapTilerPicker({ config }) {
 
             _lock.initUI(this.$refs.mapContainer);
             _map = new maptilersdk.Map(mapOptions);
+            this.map = _map;
             _lock.attachMap(_map);
 
             const containerEl = _map.getCanvasContainer?.() || _map.getCanvas?.() || this.$refs.mapContainer;
@@ -148,6 +156,7 @@ export default function mapTilerPicker({ config }) {
                 markerOptions.element = createMarkerElement(this.config.customMarker);
             }
             _marker = new maptilersdk.Marker(markerOptions).setLngLat(center).addTo(_map);
+            this.marker = _marker;
 
             this.lat = initial.lat;
             this.lng = initial.lng;
