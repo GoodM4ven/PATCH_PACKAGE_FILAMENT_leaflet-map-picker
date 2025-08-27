@@ -18,7 +18,7 @@ class MapTilerField extends Field
 
     protected bool|Closure $clickable = true;
 
-    protected string|Closure|null $searchLocationButtonLabel = 'Search Location';
+    protected string|Closure|null $searchLocationButtonLabel = null;
 
     protected function setUp(): void
     {
@@ -90,7 +90,9 @@ class MapTilerField extends Field
 
     public function getSearchLocationButtonLabel(): string
     {
-        return (string) $this->evaluate($this->searchLocationButtonLabel);
+        return (string) (
+            $this->evaluate($this->searchLocationButtonLabel) ?? __('filament-map-tiler::filament-map-tiler.search_location')
+        );
     }
 
     /**
