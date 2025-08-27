@@ -9,6 +9,7 @@ import {
     hookNavButtons,
     hookInteractionGuards,
     addStyleSwitcherControl,
+    addSatelliteToggleControl,
     attachWebglFailureProtection,
     applyLocaleIfNeeded,
     setStyle,
@@ -61,8 +62,25 @@ export default function mapTilerEntry({ location, config }) {
             }
             this.marker = new maptilersdk.Marker(markerOptions).setLngLat(coords).addTo(this.map);
 
+            let styleSelect;
             if (this.config.showStyleSwitcher) {
-                addStyleSwitcherControl(this.map, this.styles, this.config, this.lock, (s) => this.setStyle(s));
+                styleSelect = addStyleSwitcherControl(
+                    this.map,
+                    this.styles,
+                    this.config,
+                    this.lock,
+                    (s) => this.setStyle(s)
+                );
+            }
+            if (this.config.showSatelliteToggler) {
+                addSatelliteToggleControl(
+                    this.map,
+                    this.styles,
+                    this.config,
+                    this.lock,
+                    styleSelect,
+                    (s) => this.setStyle(s)
+                );
             }
             if (this.config.rotationable || this.config.zoomable) {
                 this.map.addControl(

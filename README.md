@@ -69,8 +69,9 @@ A Filament Forms component that provides an interactive MapTiler map for various
    MapTilerField::make('location')
        ->apiKey('ANOTHER_MAPTILER_API_KEY') // overrides the one set in [.env]
        ->defaultLocation([35.926963, 36.667496]),
-       ->style('STREETS') // defaults to `STREETS`; other options: OUTDOOR, WINTER, SATELLITE, HYBRID...
+       ->style('STREETS') // defaults to `STREETS`; see list of available styles below
        ->showStyleSwitcher() // shows style selector, hidden by default
+       ->withoutSatelliteToggler() // disable quick satellite toggle
        ->clickable(false) // defaults to `true`
        ->draggable(false) // defaults to `true`
        ->defaultZoom(18) // defaults to `13`
@@ -97,8 +98,9 @@ A Filament Forms component that provides an interactive MapTiler map for various
    MapTilerEntry::make('location')
        ->apiKey('ANOTHER_MAPTILER_API_KEY') // ? overrides the one set in [.env]
        ->defaultLocation([35.926963, 36.667496]),
-       ->style('STREETS') // defaults to `STREETS`; other options: OUTDOOR, WINTER, SATELLITE, HYBRID...
+       ->style('STREETS') // defaults to `STREETS`; see list of available styles below
        ->showStyleSwitcher() // shows style selector, hidden by default
+       ->withoutSatelliteToggler() // disable quick satellite toggle
        ->language('ARABIC')
        ->hash()
        ->geolocate()
@@ -110,7 +112,47 @@ A Filament Forms component that provides an interactive MapTiler map for various
            'iconAnchor' => [20, 40],
            'popupAnchor' => [0, -40],
        ])
-   ```
+    ```
+
+### Available Map Styles
+
+- `MapStyle.STREETS`
+- `MapStyle.STREETS.DARK`
+- `MapStyle.STREETS.LIGHT`
+- `MapStyle.STREETS.PASTEL`
+- `MapStyle.OUTDOOR`
+- `MapStyle.OUTDOOR.DARK`
+- `MapStyle.WINTER`
+- `MapStyle.WINTER.DARK`
+- `MapStyle.SATELLITE`
+- `MapStyle.HYBRID`
+- `MapStyle.BASIC`
+- `MapStyle.BASIC.DARK`
+- `MapStyle.BASIC.LIGHT`
+- `MapStyle.BRIGHT`
+- `MapStyle.BRIGHT.DARK`
+- `MapStyle.BRIGHT.LIGHT`
+- `MapStyle.BRIGHT.PASTEL`
+- `MapStyle.OPENSTREETMAP`
+- `MapStyle.TOPO`
+- `MapStyle.TOPO.DARK`
+- `MapStyle.TOPO.PASTEL`
+- `MapStyle.TOPO.TOPOGRAPHIQUE`
+- `MapStyle.TONER`
+- `MapStyle.TONER.LITE`
+- `MapStyle.DATAVIZ`
+- `MapStyle.DATAVIZ.DARK`
+- `MapStyle.DATAVIZ.LIGHT`
+- `MapStyle.BACKDROP`
+- `MapStyle.BACKDROP.DARK`
+- `MapStyle.BACKDROP.LIGHT`
+- `MapStyle.OCEAN`
+- `MapStyle.AQUARELLE`
+- `MapStyle.AQUARELLE.DARK`
+- `MapStyle.AQUARELLE.VIVID`
+- `MapStyle.LANDSCAPE`
+- `MapStyle.LANDSCAPE.DARK`
+- `MapStyle.LANDSCAPE.VIVID`
 
 ## Credits
 
