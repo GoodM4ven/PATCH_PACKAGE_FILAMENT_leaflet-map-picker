@@ -91,7 +91,10 @@ class MapTilerField extends Field
     public function getSearchLocationButtonLabel(): string
     {
         return (string) (
-            $this->evaluate($this->searchLocationButtonLabel) ?? __('filament-map-tiler::filament-map-tiler.search_location')
+            $this->evaluate($this->searchLocationButtonLabel) ?? __(
+                'filament-map-tiler::filament-map-tiler.search_location',
+                locale: $this->getLanguage(),
+            )
         );
     }
 
