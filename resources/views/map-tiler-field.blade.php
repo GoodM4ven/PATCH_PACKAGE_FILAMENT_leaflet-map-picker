@@ -33,9 +33,10 @@
                 class="border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700"
                 x-show="lat !== null && lng !== null"
             >
-                <div class="flex items-center">
+                <div class="flex items-center justify-end">
+                    {{-- Pin Icon --}}
                     <svg
-                        class="mr-2 h-5 w-5 text-gray-500 dark:text-gray-200"
+                        class="order-2 mr-2 h-5 w-5 text-gray-500 dark:text-gray-200"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
@@ -54,16 +55,11 @@
                             d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                         />
                     </svg>
-                    <p class="text-sm text-gray-700 dark:text-gray-200">
-                        {{ __('filament-map-tiler::filament-map-tiler.selected_location') }}
-                        <span
-                            class="font-medium"
-                            x-text="lat ? lat.toFixed(6) : ''"
-                        ></span>,
-                        <span
-                            class="font-medium"
-                            x-text="lng ? lng.toFixed(6) : ''"
-                        ></span>
+                    {{-- Coordinates --}}
+                    <p class="text-sm text-gray-700 dark:text-gray-200 text-left flex items-center justify-end font-medium">
+                        <span x-text="lng ? lng.toFixed(6) : ''"></span>
+                        <span class="ps-[0.3rem]">,</span>
+                        <span x-text="lat ? lat.toFixed(6) : ''"></span>
                     </p>
                 </div>
             </div>

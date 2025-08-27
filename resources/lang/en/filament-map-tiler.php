@@ -1,7 +1,6 @@
 <?php
 
 return [
-    'selected_location' => 'Selected Location:',
     'map_style' => 'Map Style',
     'search_location' => 'Search location',
     'search_placeholder' => 'Search location...',

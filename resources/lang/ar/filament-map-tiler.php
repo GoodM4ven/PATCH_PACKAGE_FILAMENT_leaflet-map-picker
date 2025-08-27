@@ -1,7 +1,6 @@
 <?php
 
 return [
-    'selected_location' => 'الموقع المحدد:',
     'map_style' => 'نمط الخريطة',
     'search_location' => 'ابحث عن موقع',
     'search_placeholder' => 'ابحث عن موقع...',
