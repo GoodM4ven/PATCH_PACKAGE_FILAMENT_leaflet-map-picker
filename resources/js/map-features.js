@@ -13,13 +13,40 @@ export function buildStyles(customStyles = {}) {
         STREETS: maptilersdk.MapStyle.STREETS,
         'STREETS.DARK': maptilersdk.MapStyle.STREETS.DARK,
         'STREETS.LIGHT': maptilersdk.MapStyle.STREETS.LIGHT,
+        'STREETS.PASTEL': maptilersdk.MapStyle.STREETS.PASTEL,
         OUTDOOR: maptilersdk.MapStyle.OUTDOOR,
+        'OUTDOOR.DARK': maptilersdk.MapStyle.OUTDOOR.DARK,
         WINTER: maptilersdk.MapStyle.WINTER,
+        'WINTER.DARK': maptilersdk.MapStyle.WINTER.DARK,
         SATELLITE: maptilersdk.MapStyle.SATELLITE,
         HYBRID: maptilersdk.MapStyle.HYBRID,
+        BASIC: maptilersdk.MapStyle.BASIC,
+        'BASIC.DARK': maptilersdk.MapStyle.BASIC.DARK,
+        'BASIC.LIGHT': maptilersdk.MapStyle.BASIC.LIGHT,
+        BRIGHT: maptilersdk.MapStyle.BRIGHT,
+        'BRIGHT.DARK': maptilersdk.MapStyle.BRIGHT.DARK,
+        'BRIGHT.LIGHT': maptilersdk.MapStyle.BRIGHT.LIGHT,
+        'BRIGHT.PASTEL': maptilersdk.MapStyle.BRIGHT.PASTEL,
+        OPENSTREETMAP: maptilersdk.MapStyle.OPENSTREETMAP,
+        TOPO: maptilersdk.MapStyle.TOPO,
+        'TOPO.DARK': maptilersdk.MapStyle.TOPO.DARK,
+        'TOPO.PASTEL': maptilersdk.MapStyle.TOPO.PASTEL,
+        'TOPO.TOPOGRAPHIQUE': maptilersdk.MapStyle.TOPO.TOPOGRAPHIQUE,
+        TONER: maptilersdk.MapStyle.TONER,
+        'TONER.LITE': maptilersdk.MapStyle.TONER.LITE,
         DATAVIZ: maptilersdk.MapStyle.DATAVIZ,
         'DATAVIZ.DARK': maptilersdk.MapStyle.DATAVIZ.DARK,
         'DATAVIZ.LIGHT': maptilersdk.MapStyle.DATAVIZ.LIGHT,
+        BACKDROP: maptilersdk.MapStyle.BACKDROP,
+        'BACKDROP.DARK': maptilersdk.MapStyle.BACKDROP.DARK,
+        'BACKDROP.LIGHT': maptilersdk.MapStyle.BACKDROP.LIGHT,
+        OCEAN: maptilersdk.MapStyle.OCEAN,
+        AQUARELLE: maptilersdk.MapStyle.AQUARELLE,
+        'AQUARELLE.DARK': maptilersdk.MapStyle.AQUARELLE.DARK,
+        'AQUARELLE.VIVID': maptilersdk.MapStyle.AQUARELLE.VIVID,
+        LANDSCAPE: maptilersdk.MapStyle.LANDSCAPE,
+        'LANDSCAPE.DARK': maptilersdk.MapStyle.LANDSCAPE.DARK,
+        'LANDSCAPE.VIVID': maptilersdk.MapStyle.LANDSCAPE.VIVID,
     };
     return { ...base, ...customStyles };
 }
@@ -523,6 +550,7 @@ export function hookInteractionGuards(container, map, limiters, lock) {
 }
 
 export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
+    let select;
     class TileControl {
         onAdd(mp) {
             this.map = mp;
@@ -533,8 +561,11 @@ export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
                 label.textContent = cfg.styleSwitcherLabel;
                 this.container.appendChild(label);
             }
-            const select = document.createElement('select');
-            Object.keys(styles).forEach((key) => {
+            select = document.createElement('select');
+            const keys = Object.keys(styles).filter((key) =>
+                cfg.showSatelliteToggler ? key !== 'SATELLITE' : true
+            );
+            keys.forEach((key) => {
                 const option = document.createElement('option');
                 option.value = key;
                 option.textContent = formatStyleName(key);
@@ -543,6 +574,7 @@ export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
             });
             select.onchange = (e) => {
                 if (lock && lock.isLocked()) return;
+                if (cfg.showSatelliteToggler && cfg._satelliteActive) return;
                 const name = e.target.value;
                 if (setStyle) setStyle(name);
                 else {
@@ -559,6 +591,53 @@ export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
         }
     }
     map.addControl(new TileControl(), 'top-right');
+    return select;
+}
+
+export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, setStyle) {
+    cfg._satelliteActive = false;
+    class SatelliteControl {
+        onAdd(mp) {
+            this.map = mp;
+            this.container = document.createElement('div');
+            this.container.className = 'map-tiler-satellite-toggle maplibregl-ctrl maplibregl-ctrl-group';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = '🛰️';
+            btn.setAttribute('aria-label', 'Toggle satellite');
+            btn.onclick = () => {
+                if (lock && lock.isLocked()) return;
+                if (!cfg._satelliteActive) {
+                    this.lastStyle = cfg.style;
+                    cfg._satelliteActive = true;
+                    if (styleSelect) styleSelect.disabled = true;
+                    if (setStyle) setStyle('SATELLITE');
+                    else map.setStyle(maptilersdk.MapStyle.SATELLITE);
+                    btn.classList.add('active');
+                } else {
+                    cfg._satelliteActive = false;
+                    const target = this.lastStyle || 'STREETS';
+                    if (setStyle) setStyle(target);
+                    else {
+                        const style = styles[target] || maptilersdk.MapStyle.STREETS;
+                        map.setStyle(style);
+                    }
+                    if (styleSelect) {
+                        styleSelect.disabled = false;
+                        styleSelect.value = target;
+                    }
+                    btn.classList.remove('active');
+                }
+            };
+            this.container.appendChild(btn);
+            return this.container;
+        }
+        onRemove() {
+            if (this.container && this.container.parentNode) this.container.parentNode.removeChild(this.container);
+            this.map = undefined;
+        }
+    }
+    map.addControl(new SatelliteControl(), 'top-right');
 }
 
 export async function tryReloadStyleWithBackoff(map, styles, cfg) {

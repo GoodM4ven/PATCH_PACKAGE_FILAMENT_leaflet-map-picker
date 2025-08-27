@@ -34,6 +34,8 @@ trait HasMapFeatures
 
     protected bool $showStyleSwitcher = false;
 
+    protected bool|Closure $showSatelliteToggler = true;
+
     protected array $customStyles = [];
 
     protected ?array $customMarker = null;
@@ -346,6 +348,18 @@ trait HasMapFeatures
     public function getShowStyleSwitcher(): bool
     {
         return $this->showStyleSwitcher;
+    }
+
+    public function withoutSatelliteToggler(bool|Closure $condition = true): static
+    {
+        $this->showSatelliteToggler = ! $condition;
+
+        return $this;
+    }
+
+    public function getShowSatelliteToggler(): bool
+    {
+        return (bool) $this->evaluate($this->showSatelliteToggler);
     }
 
     public function customStyles(array|Closure $customStyles): static

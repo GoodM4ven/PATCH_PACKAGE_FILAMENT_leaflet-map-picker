@@ -10,6 +10,7 @@ import {
     hookNavButtons,
     hookInteractionGuards,
     addStyleSwitcherControl,
+    addSatelliteToggleControl,
     attachWebglFailureProtection,
     applyLocaleIfNeeded,
     setStyle,
@@ -117,8 +118,25 @@ export default function mapTilerPicker({ config }) {
                 });
             }
 
+            let styleSelect;
             if (this.config.showStyleSwitcher) {
-                addStyleSwitcherControl(_map, _styles, this.config, _lock, (s) => this.setStyle(s));
+                styleSelect = addStyleSwitcherControl(
+                    _map,
+                    _styles,
+                    this.config,
+                    _lock,
+                    (s) => this.setStyle(s)
+                );
+            }
+            if (this.config.showSatelliteToggler) {
+                addSatelliteToggleControl(
+                    _map,
+                    _styles,
+                    this.config,
+                    _lock,
+                    styleSelect,
+                    (s) => this.setStyle(s)
+                );
             }
 
             _map.on('load', () => this.applyLocaleIfNeeded());

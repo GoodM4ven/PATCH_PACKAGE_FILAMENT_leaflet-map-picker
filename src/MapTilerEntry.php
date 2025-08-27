@@ -43,6 +43,7 @@ class MapTilerEntry extends Entry
             'geolocate' => $this->getGeolocate(),
             'style' => $this->getStyle(),
             'showStyleSwitcher' => $this->getShowStyleSwitcher(),
+            'showSatelliteToggler' => $this->getShowSatelliteToggler(),
             'styleSwitcherLabel' => __('filament-map-tiler::filament-map-tiler.map_style'),
             'customStyles' => $this->getCustomStyles(),
             'customMarker' => $this->getCustomMarker(),
