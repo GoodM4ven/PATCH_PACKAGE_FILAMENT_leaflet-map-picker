@@ -64,10 +64,6 @@ export function setupSdk(cfg) {
         window.__maptilerApiKey = cfg.apiKey;
     }
 
-    if (cfg.language) {
-        const lang = maptilersdk.Language[cfg.language] || cfg.language;
-        maptilersdk.config.primaryLanguage = lang;
-    }
 }
 
 export function applyLocale(map, language, translations = {}, container) {
