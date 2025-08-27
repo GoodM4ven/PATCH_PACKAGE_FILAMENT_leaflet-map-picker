@@ -34,6 +34,10 @@ export default function mapTilerPicker({ config }) {
         commitCoordinates: null,
         config: cfg,
         lastFix: null,
+        styles: Alpine.raw(_styles),
+        map: Alpine.raw(null),
+        marker: Alpine.raw(null),
+        lock: Alpine.raw(_lock),
 
         init() {
             if (!Alpine.store('mt')) {
@@ -66,6 +70,7 @@ export default function mapTilerPicker({ config }) {
 
             _lock.initUI(this.$refs.mapContainer);
             _map = new maptilersdk.Map(mapOptions);
+            this.map = Alpine.raw(_map);
             _lock.attachMap(_map);
 
             const containerEl = _map.getCanvasContainer?.() || _map.getCanvas?.() || this.$refs.mapContainer;
@@ -148,6 +153,7 @@ export default function mapTilerPicker({ config }) {
                 markerOptions.element = createMarkerElement(this.config.customMarker);
             }
             _marker = new maptilersdk.Marker(markerOptions).setLngLat(center).addTo(_map);
+            this.marker = Alpine.raw(_marker);
 
             this.lat = initial.lat;
             this.lng = initial.lng;
