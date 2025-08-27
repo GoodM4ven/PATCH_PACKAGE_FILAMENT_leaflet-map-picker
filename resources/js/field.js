@@ -22,11 +22,8 @@ export default function mapTilerPicker({ config }) {
     const cfg = config;
     setupSdk(cfg);
 
-    const _styles = buildStyles(cfg.customStyles);
-    const _limiters = createLimiters(cfg.rateLimits);
-    let _map = null;
-    let _marker = null;
-    let _lock = createLock(cfg);
+    const styles = buildStyles(cfg.customStyles);
+    const limiters = createLimiters(cfg.rateLimits);
 
     return {
         lat: null,
@@ -34,6 +31,11 @@ export default function mapTilerPicker({ config }) {
         commitCoordinates: null,
         config: cfg,
         lastFix: null,
+
+        map: null,
+        marker: null,
+        styles,
+        lock: createLock(cfg),
 
         init() {
             if (!Alpine.store('mt')) {
@@ -49,7 +51,7 @@ export default function mapTilerPicker({ config }) {
 
             const mapOptions = {
                 container: this.$refs.mapContainer,
-                style: _styles[this.config.style] || maptilersdk.MapStyle.STREETS,
+                style: this.styles[this.config.style] || maptilersdk.MapStyle.STREETS,
                 center,
                 zoom: this.config.initialZoomLevel,
                 minZoom: this.config.minZoomLevel ?? undefined,
@@ -64,15 +66,16 @@ export default function mapTilerPicker({ config }) {
                 maxBounds: this.config.maxBounds || undefined,
             };
 
-            _lock.initUI(this.$refs.mapContainer);
-            _map = new maptilersdk.Map(mapOptions);
-            _lock.attachMap(_map);
+            this.lock.initUI(this.$refs.mapContainer);
+            this.map = new maptilersdk.Map(mapOptions);
+            this.lock.attachMap(this.map);
 
-            const containerEl = _map.getCanvasContainer?.() || _map.getCanvas?.() || this.$refs.mapContainer;
-            hookInteractionGuards(containerEl, _map, _limiters, _lock);
+            const containerEl =
+                this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
+            hookInteractionGuards(containerEl, this.map, limiters, this.lock);
 
             if (this.config.rotationable || this.config.zoomable) {
-                _map.addControl(
+                this.map.addControl(
                     new maptilersdk.MaptilerNavigationControl({
                         showCompass: this.config.rotationable,
                         showZoom: this.config.zoomable,
@@ -80,28 +83,28 @@ export default function mapTilerPicker({ config }) {
                     }),
                     'top-right'
                 );
-                hookNavButtons(containerEl, _map, _limiters, _lock);
-                _map.on('styledata', () => hookNavButtons(containerEl, _map, _limiters, _lock));
+                hookNavButtons(containerEl, this.map, limiters, this.lock);
+                this.map.on('styledata', () => hookNavButtons(containerEl, this.map, limiters, this.lock));
             }
             if (!this.config.rotationable) {
-                _map.dragRotate.disable();
-                _map.touchZoomRotate.disableRotation();
+                this.map.dragRotate.disable();
+                this.map.touchZoomRotate.disableRotation();
             }
             if (!this.config.zoomable) {
-                _map.scrollZoom.disable();
-                _map.boxZoom.disable();
-                _map.doubleClickZoom.disable();
-                _map.touchZoomRotate.disable();
-                _map.keyboard.disable();
+                this.map.scrollZoom.disable();
+                this.map.boxZoom.disable();
+                this.map.doubleClickZoom.disable();
+                this.map.touchZoomRotate.disable();
+                this.map.keyboard.disable();
             }
 
             const geoCfg = this.config.geolocate;
             if (geoCfg.enabled) {
-                addGeolocateControl(_map, containerEl, geoCfg, _limiters, _lock, {
+                addGeolocateControl(this.map, containerEl, geoCfg, limiters, this.lock, {
                     onGeolocate: (e) => {
                         const { latitude, longitude, accuracy } = e.coords;
                         if (geoCfg.pinAsWell !== false) {
-                            _marker.setLngLat([longitude, latitude]);
+                            this.marker.setLngLat([longitude, latitude]);
                             this.lat = latitude;
                             this.lng = longitude;
                             this.commitCoordinates({ lat: latitude, lng: longitude });
@@ -121,56 +124,56 @@ export default function mapTilerPicker({ config }) {
             let styleSelect;
             if (this.config.showStyleSwitcher) {
                 styleSelect = addStyleSwitcherControl(
-                    _map,
-                    _styles,
+                    this.map,
+                    this.styles,
                     this.config,
-                    _lock,
+                    this.lock,
                     (s) => this.setStyle(s)
                 );
             }
             if (this.config.showSatelliteToggler) {
                 addSatelliteToggleControl(
-                    _map,
-                    _styles,
+                    this.map,
+                    this.styles,
                     this.config,
-                    _lock,
+                    this.lock,
                     styleSelect,
                     (s) => this.setStyle(s)
                 );
             }
 
-            _map.on('load', () => this.applyLocaleIfNeeded());
-            _map.on('styledata', () => this.applyLocaleIfNeeded());
-            attachWebglFailureProtection(_map, _styles, this.config, () => this.hardRefreshSoon());
+            this.map.on('load', () => this.applyLocaleIfNeeded());
+            this.map.on('styledata', () => this.applyLocaleIfNeeded());
+            attachWebglFailureProtection(this.map, this.styles, this.config, () => this.hardRefreshSoon());
 
             const markerOptions = { draggable: this.config.draggable };
             if (this.config.customMarker) {
                 markerOptions.element = createMarkerElement(this.config.customMarker);
             }
-            _marker = new maptilersdk.Marker(markerOptions).setLngLat(center).addTo(_map);
+            this.marker = new maptilersdk.Marker(markerOptions).setLngLat(center).addTo(this.map);
 
             this.lat = initial.lat;
             this.lng = initial.lng;
             this.setCoordinates(initial);
 
             if (this.config.clickable) {
-                _map.on('click', (e) => {
-                    if (_lock.isLocked()) return;
+                this.map.on('click', (e) => {
+                    if (this.lock.isLocked()) return;
                     this.markerMoved({ latLng: e.lngLat });
                 });
             }
             if (this.config.draggable) {
-                _marker.on('dragend', () => {
-                    if (_lock.isLocked()) return;
-                    this.markerMoved({ latLng: _marker.getLngLat() });
+                this.marker.on('dragend', () => {
+                    if (this.lock.isLocked()) return;
+                    this.markerMoved({ latLng: this.marker.getLngLat() });
                 });
             }
 
             this.commitCoordinates = throttle((position) => {
-                if (_lock.isLocked()) return;
-                const t = _limiters.pinMove.try();
+                if (this.lock.isLocked()) return;
+                const t = limiters.pinMove.try();
                 if (t.ok) this.setCoordinates(position);
-                else _lock.lockFor(t.resetMs);
+                else this.lock.lockFor(t.resetMs);
             }, 300);
 
             this.addSearchButton();
@@ -182,11 +185,11 @@ export default function mapTilerPicker({ config }) {
         applyLocaleIfNeeded,
 
         jumpTo(position, { zoom } = {}) {
-            _marker.setLngLat([position.lng, position.lat]);
+            this.marker.setLngLat([position.lng, position.lat]);
             if (typeof zoom === 'number') {
-                _map.jumpTo({ center: [position.lng, position.lat], zoom });
+                this.map.jumpTo({ center: [position.lng, position.lat], zoom });
             } else {
-                _map.jumpTo({ center: [position.lng, position.lat] });
+                this.map.jumpTo({ center: [position.lng, position.lat] });
             }
             this.lat = position.lat;
             this.lng = position.lng;
@@ -197,19 +200,19 @@ export default function mapTilerPicker({ config }) {
             this.lat = p.lat;
             this.lng = p.lng;
             this.commitCoordinates({ lat: this.lat, lng: this.lng });
-            _marker.setLngLat([this.lng, this.lat]);
-            _map.easeTo({ center: [this.lng, this.lat] });
+            this.marker.setLngLat([this.lng, this.lat]);
+            this.map.easeTo({ center: [this.lng, this.lat] });
         },
 
         updateMapFromAlpine() {
             const location = this.getCoordinates();
-            const pos = _marker.getLngLat();
+            const pos = this.marker.getLngLat();
             if (location.lat !== pos.lat || location.lng !== pos.lng) this.updateMap(location);
         },
 
         updateMap(position) {
-            _marker.setLngLat([position.lng, position.lat]);
-            _map.easeTo({ center: [position.lng, position.lat] });
+            this.marker.setLngLat([position.lng, position.lat]);
+            this.map.easeTo({ center: [position.lng, position.lat] });
             this.lat = position.lat;
             this.lng = position.lng;
         },
@@ -244,14 +247,14 @@ export default function mapTilerPicker({ config }) {
                 st.isSearching = false;
                 return;
             }
-            if (_lock.isLocked()) {
+            if (this.lock.isLocked()) {
                 st.isSearching = false;
                 return;
             }
-            const t = _limiters.search.try();
+            const t = limiters.search.try();
             if (!t.ok) {
                 st.isSearching = false;
-                _lock.lockFor(t.resetMs);
+                this.lock.lockFor(t.resetMs);
                 this.$dispatch('close-modal', { id: 'location-search-modal' });
                 return;
             }
@@ -272,9 +275,9 @@ export default function mapTilerPicker({ config }) {
 
         selectLocationFromModal(result) {
             const [lng, lat] = result.center || result.geometry.coordinates;
-            _map.setCenter([lng, lat]);
-            _map.setZoom(15);
-            _marker.setLngLat([lng, lat]);
+            this.map.setCenter([lng, lat]);
+            this.map.setZoom(15);
+            this.marker.setLngLat([lng, lat]);
             this.lat = lat;
             this.lng = lng;
             this.commitCoordinates({ lat, lng });
@@ -288,7 +291,7 @@ export default function mapTilerPicker({ config }) {
             const self = this;
             class SearchControl {
                 onAdd(mp) {
-                    _map = mp;
+                    this._map = mp;
                     this.container = document.createElement('div');
                     this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
                     const btn = document.createElement('button');
@@ -300,17 +303,17 @@ export default function mapTilerPicker({ config }) {
                         '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>';
                     btn.title = self.config.searchLocationButtonLabel || 'Search Location';
                     btn.onclick = () => {
-                        if (!_lock.isLocked()) self.$dispatch('open-modal', { id: 'location-search-modal' });
+                        if (!self.lock.isLocked()) self.$dispatch('open-modal', { id: 'location-search-modal' });
                     };
                     this.container.appendChild(btn);
                     return this.container;
                 }
                 onRemove() {
                     if (this.container && this.container.parentNode) this.container.parentNode.removeChild(this.container);
-                    _map = undefined;
+                    this._map = undefined;
                 }
             }
-            _map.addControl(new SearchControl(), 'top-left');
+            this.map.addControl(new SearchControl(), 'top-left');
         },
     };
 }

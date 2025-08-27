@@ -596,6 +596,7 @@ export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
 
 export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, setStyle) {
     cfg._satelliteActive = false;
+    const styleContainer = styleSelect ? styleSelect.parentElement : null;
     class SatelliteControl {
         onAdd(mp) {
             this.map = mp;
@@ -610,7 +611,7 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, s
                 if (!cfg._satelliteActive) {
                     this.lastStyle = cfg.style;
                     cfg._satelliteActive = true;
-                    if (styleSelect) styleSelect.disabled = true;
+                    if (styleContainer) styleContainer.style.display = 'none';
                     if (setStyle) setStyle('SATELLITE');
                     else map.setStyle(maptilersdk.MapStyle.SATELLITE);
                     btn.classList.add('active');
@@ -622,8 +623,8 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, s
                         const style = styles[target] || maptilersdk.MapStyle.STREETS;
                         map.setStyle(style);
                     }
-                    if (styleSelect) {
-                        styleSelect.disabled = false;
+                    if (styleContainer && styleSelect) {
+                        styleContainer.style.display = '';
                         styleSelect.value = target;
                     }
                     btn.classList.remove('active');
