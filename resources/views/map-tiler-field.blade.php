@@ -64,7 +64,7 @@
                             target="_blank"
                         >
                             <span x-text="lng ? lng.toFixed(6) : ''"></span>
-                            <span class="pe-[0.3rem]">,</span>
+                            <span class="-me-[0.15rem]">,</span>
                             <span x-text="lat ? lat.toFixed(6) : ''"></span>
                         </a>
                     </p>
