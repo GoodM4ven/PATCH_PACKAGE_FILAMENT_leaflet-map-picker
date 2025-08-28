@@ -51,7 +51,7 @@ export default function mapTilerPicker({ config }) {
 
             const mapOptions = {
                 container: this.$refs.mapContainer,
-                style: this.styles[this.config.style] || maptilersdk.MapStyle.STREETS,
+                style: this.styles[this.config.style] || this.styles['STREETS'],
                 center,
                 zoom: this.config.initialZoomLevel,
                 minZoom: this.config.minZoomLevel ?? undefined,

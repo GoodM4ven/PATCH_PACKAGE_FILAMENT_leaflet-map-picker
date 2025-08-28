@@ -10,47 +10,86 @@ import {
 
 export function buildStyles(customStyles = {}) {
     const M = maptilersdk.MapStyle;
-    const v = (ref, key) => (ref && ref.variants ? ref.variants[key] : undefined) || ref;
-    const base = {
-        STREETS: M.STREETS,
-        'STREETS.DARK': v(M.STREETS, 'DARK'),
-        'STREETS.LIGHT': v(M.STREETS, 'LIGHT'),
-        'STREETS.PASTEL': v(M.STREETS, 'PASTEL'),
-        OUTDOOR: M.OUTDOOR,
-        'OUTDOOR.DARK': v(M.OUTDOOR, 'DARK'),
-        WINTER: M.WINTER,
-        'WINTER.DARK': v(M.WINTER, 'DARK'),
-        SATELLITE: M.SATELLITE,
-        HYBRID: M.HYBRID,
-        BASIC: M.BASIC,
-        'BASIC.DARK': v(M.BASIC, 'DARK'),
-        'BASIC.LIGHT': v(M.BASIC, 'LIGHT'),
-        BRIGHT: M.BRIGHT,
-        'BRIGHT.DARK': v(M.BRIGHT, 'DARK'),
-        'BRIGHT.LIGHT': v(M.BRIGHT, 'LIGHT'),
-        'BRIGHT.PASTEL': v(M.BRIGHT, 'PASTEL'),
-        OPENSTREETMAP: M.OPENSTREETMAP,
-        TOPO: M.TOPO,
-        'TOPO.DARK': v(M.TOPO, 'DARK'),
-        'TOPO.PASTEL': v(M.TOPO, 'PASTEL'),
-        'TOPO.TOPOGRAPHIQUE': v(M.TOPO, 'TOPOGRAPHIQUE'),
-        TONER: M.TONER,
-        'TONER.LITE': v(M.TONER, 'LITE'),
-        DATAVIZ: M.DATAVIZ,
-        'DATAVIZ.DARK': v(M.DATAVIZ, 'DARK'),
-        'DATAVIZ.LIGHT': v(M.DATAVIZ, 'LIGHT'),
-        BACKDROP: M.BACKDROP,
-        'BACKDROP.DARK': v(M.BACKDROP, 'DARK'),
-        'BACKDROP.LIGHT': v(M.BACKDROP, 'LIGHT'),
-        OCEAN: M.OCEAN,
-        AQUARELLE: M.AQUARELLE,
-        'AQUARELLE.DARK': v(M.AQUARELLE, 'DARK'),
-        'AQUARELLE.VIVID': v(M.AQUARELLE, 'VIVID'),
-        LANDSCAPE: M.LANDSCAPE,
-        'LANDSCAPE.DARK': v(M.LANDSCAPE, 'DARK'),
-        'LANDSCAPE.VIVID': v(M.LANDSCAPE, 'VIVID'),
+
+    // Convert MapTiler style objects/proxies to plain strings (style URLs/ids)
+    const toStyleString = (input) => {
+        try {
+            // MapStyleVariant has getExpandedStyleURL
+            if (input && typeof input.getExpandedStyleURL === 'function') {
+                return input.getExpandedStyleURL();
+            }
+            // ReferenceMapStyle: prefer default variant's URL if available
+            if (input && typeof input.getDefaultVariant === 'function') {
+                const v = input.getDefaultVariant();
+                if (v && typeof v.getExpandedStyleURL === 'function') return v.getExpandedStyleURL();
+            }
+            // MapStyleVariant/ReferenceMapStyle id fallback
+            if (input && typeof input.getId === 'function') {
+                // SDK will expand ids itself if needed
+                return input.getId();
+            }
+        } catch (_) {}
+        // If already a string or unknown type, return as-is
+        return input;
     };
-    return { ...base, ...customStyles };
+
+    const variant = (ref, key) => {
+        try {
+            if (ref && typeof ref.getVariant === 'function') return ref.getVariant(key);
+            if (ref && ref.variants && ref.variants[key]) return ref.variants[key];
+        } catch (_) {}
+        return ref;
+    };
+
+    const base = {
+        STREETS: toStyleString(M.STREETS),
+        'STREETS.DARK': toStyleString(variant(M.STREETS, 'DARK')),
+        'STREETS.LIGHT': toStyleString(variant(M.STREETS, 'LIGHT')),
+        'STREETS.PASTEL': toStyleString(variant(M.STREETS, 'PASTEL')),
+        OUTDOOR: toStyleString(M.OUTDOOR),
+        'OUTDOOR.DARK': toStyleString(variant(M.OUTDOOR, 'DARK')),
+        WINTER: toStyleString(M.WINTER),
+        'WINTER.DARK': toStyleString(variant(M.WINTER, 'DARK')),
+        SATELLITE: toStyleString(M.SATELLITE),
+        HYBRID: toStyleString(M.HYBRID),
+        BASIC: toStyleString(M.BASIC),
+        'BASIC.DARK': toStyleString(variant(M.BASIC, 'DARK')),
+        'BASIC.LIGHT': toStyleString(variant(M.BASIC, 'LIGHT')),
+        BRIGHT: toStyleString(M.BRIGHT),
+        'BRIGHT.DARK': toStyleString(variant(M.BRIGHT, 'DARK')),
+        'BRIGHT.LIGHT': toStyleString(variant(M.BRIGHT, 'LIGHT')),
+        'BRIGHT.PASTEL': toStyleString(variant(M.BRIGHT, 'PASTEL')),
+        OPENSTREETMAP: toStyleString(M.OPENSTREETMAP),
+        TOPO: toStyleString(M.TOPO),
+        'TOPO.DARK': toStyleString(variant(M.TOPO, 'DARK')),
+        'TOPO.PASTEL': toStyleString(variant(M.TOPO, 'PASTEL')),
+        'TOPO.TOPOGRAPHIQUE': toStyleString(variant(M.TOPO, 'TOPOGRAPHIQUE')),
+        TONER: toStyleString(M.TONER),
+        'TONER.LITE': toStyleString(variant(M.TONER, 'LITE')),
+        DATAVIZ: toStyleString(M.DATAVIZ),
+        'DATAVIZ.DARK': toStyleString(variant(M.DATAVIZ, 'DARK')),
+        'DATAVIZ.LIGHT': toStyleString(variant(M.DATAVIZ, 'LIGHT')),
+        BACKDROP: toStyleString(M.BACKDROP),
+        'BACKDROP.DARK': toStyleString(variant(M.BACKDROP, 'DARK')),
+        'BACKDROP.LIGHT': toStyleString(variant(M.BACKDROP, 'LIGHT')),
+        OCEAN: toStyleString(M.OCEAN),
+        AQUARELLE: toStyleString(M.AQUARELLE),
+        'AQUARELLE.DARK': toStyleString(variant(M.AQUARELLE, 'DARK')),
+        'AQUARELLE.VIVID': toStyleString(variant(M.AQUARELLE, 'VIVID')),
+        LANDSCAPE: toStyleString(M.LANDSCAPE),
+        'LANDSCAPE.DARK': toStyleString(variant(M.LANDSCAPE, 'DARK')),
+        'LANDSCAPE.VIVID': toStyleString(variant(M.LANDSCAPE, 'VIVID')),
+    };
+
+    // Normalize custom styles to plain strings if possible
+    const normalizedCustom = {};
+    try {
+        for (const [k, v] of Object.entries(customStyles || {})) {
+            normalizedCustom[k] = toStyleString(v);
+        }
+    } catch (_) {}
+
+    return { ...base, ...normalizedCustom };
 }
 
 export function setupSdk(cfg) {
@@ -588,7 +627,7 @@ export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
                 const name = e.target.value;
                 if (setStyle) setStyle(name);
                 else {
-                    const style = styles[name] || maptilersdk.MapStyle.STREETS;
+                    const style = styles[name] || styles['STREETS'];
                     map.setStyle(style);
                 }
             };
@@ -622,14 +661,14 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, s
                     cfg._satelliteActive = true;
                     if (styleSelect) styleSelect.disabled = true;
                     if (setStyle) setStyle('SATELLITE');
-                    else map.setStyle(maptilersdk.MapStyle.SATELLITE);
+                    else map.setStyle(styles['SATELLITE'] || styles['HYBRID'] || styles['STREETS']);
                     btn.classList.add('active');
                 } else {
                     cfg._satelliteActive = false;
                     const target = this.lastStyle || 'STREETS';
                     if (setStyle) setStyle(target);
                     else {
-                        const style = styles[target] || maptilersdk.MapStyle.STREETS;
+                        const style = styles[target] || styles['STREETS'];
                         map.setStyle(style);
                     }
                     if (styleSelect) {
@@ -654,7 +693,7 @@ export async function tryReloadStyleWithBackoff(map, styles, cfg) {
     const delays = backoffDelays(5);
     for (let i = 0; i < delays.length; i++) {
         try {
-            const style = styles[cfg.style] || maptilersdk.MapStyle.STREETS;
+            const style = styles[cfg.style] || styles['STREETS'];
             map.setStyle(style);
             await new Promise((resolve, reject) => {
                 const onError = (e) => reject(e && e.error ? e.error : new Error('style error'));
@@ -745,10 +784,17 @@ export function setStyle(styleName) {
     if (!style) {
         try {
             const fallback = buildStyles(this.config?.customStyles || {});
-            style = fallback[styleName] || maptilersdk.MapStyle.STREETS;
+            style = fallback[styleName] || fallback['STREETS'];
         } catch (_) {
-            style = maptilersdk.MapStyle.STREETS;
+            // Last resort: a safe default URL
+            style = 'https://api.maptiler.com/maps/streets/style.json';
         }
+    }
+    // If style is a plain object (custom JSON), de-proxy it to avoid structuredClone/DataCloneError
+    if (style && typeof style === 'object' && !Array.isArray(style)) {
+        try {
+            style = JSON.parse(JSON.stringify(style));
+        } catch (_) {}
     }
     try {
         this.map.setStyle(style);
