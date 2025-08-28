@@ -40,6 +40,24 @@ export default function mapTilerPicker({ config }) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
 
+            // Bridge private locals to non-enumerable Alpine props
+            // so shared helpers can access them without Livewire recursion.
+            const defineBridge = (key, getter, setter) => {
+                if (!Object.getOwnPropertyDescriptor(this, key)) {
+                    Object.defineProperty(this, key, {
+                        enumerable: false,
+                        configurable: true,
+                        get: getter,
+                        set: setter,
+                    });
+                }
+            };
+            defineBridge('map', () => _map, (v) => (_map = v));
+            defineBridge('marker', () => _marker, (v) => (_marker = v));
+            // styles mapping is immutable in this context; expose as read-only
+            defineBridge('styles', () => _styles);
+            defineBridge('lock', () => _lock, (v) => (_lock = v));
+
             this.initMap();
         },
 
