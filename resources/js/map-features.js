@@ -9,85 +9,73 @@ import {
 } from './helpers.js';
 
 export function buildStyles(customStyles = {}) {
-    const M = maptilersdk.MapStyle;
-
-    // Convert MapTiler style objects/proxies to plain strings (style URLs/ids)
-    const toStyleString = (input) => {
-        try {
-            // MapStyleVariant has getExpandedStyleURL
-            if (input && typeof input.getExpandedStyleURL === 'function') {
-                return input.getExpandedStyleURL();
-            }
-            // ReferenceMapStyle: prefer default variant's URL if available
-            if (input && typeof input.getDefaultVariant === 'function') {
-                const v = input.getDefaultVariant();
-                if (v && typeof v.getExpandedStyleURL === 'function') return v.getExpandedStyleURL();
-            }
-            // MapStyleVariant/ReferenceMapStyle id fallback
-            if (input && typeof input.getId === 'function') {
-                // SDK will expand ids itself if needed
-                return input.getId();
-            }
-        } catch (_) {}
-        // If already a string or unknown type, return as-is
-        return input;
-    };
-
-    const variant = (ref, key) => {
-        try {
-            if (ref && typeof ref.getVariant === 'function') return ref.getVariant(key);
-            if (ref && ref.variants && ref.variants[key]) return ref.variants[key];
-        } catch (_) {}
-        return ref;
-    };
-
+    // Build using static MapTiler style IDs to avoid Proxy objects and SDK warnings
     const base = {
-        STREETS: toStyleString(M.STREETS),
-        'STREETS.DARK': toStyleString(variant(M.STREETS, 'DARK')),
-        'STREETS.LIGHT': toStyleString(variant(M.STREETS, 'LIGHT')),
-        'STREETS.PASTEL': toStyleString(variant(M.STREETS, 'PASTEL')),
-        OUTDOOR: toStyleString(M.OUTDOOR),
-        'OUTDOOR.DARK': toStyleString(variant(M.OUTDOOR, 'DARK')),
-        WINTER: toStyleString(M.WINTER),
-        'WINTER.DARK': toStyleString(variant(M.WINTER, 'DARK')),
-        SATELLITE: toStyleString(M.SATELLITE),
-        HYBRID: toStyleString(M.HYBRID),
-        BASIC: toStyleString(M.BASIC),
-        'BASIC.DARK': toStyleString(variant(M.BASIC, 'DARK')),
-        'BASIC.LIGHT': toStyleString(variant(M.BASIC, 'LIGHT')),
-        BRIGHT: toStyleString(M.BRIGHT),
-        'BRIGHT.DARK': toStyleString(variant(M.BRIGHT, 'DARK')),
-        'BRIGHT.LIGHT': toStyleString(variant(M.BRIGHT, 'LIGHT')),
-        'BRIGHT.PASTEL': toStyleString(variant(M.BRIGHT, 'PASTEL')),
-        OPENSTREETMAP: toStyleString(M.OPENSTREETMAP),
-        TOPO: toStyleString(M.TOPO),
-        'TOPO.DARK': toStyleString(variant(M.TOPO, 'DARK')),
-        'TOPO.PASTEL': toStyleString(variant(M.TOPO, 'PASTEL')),
-        'TOPO.TOPOGRAPHIQUE': toStyleString(variant(M.TOPO, 'TOPOGRAPHIQUE')),
-        TONER: toStyleString(M.TONER),
-        'TONER.LITE': toStyleString(variant(M.TONER, 'LITE')),
-        DATAVIZ: toStyleString(M.DATAVIZ),
-        'DATAVIZ.DARK': toStyleString(variant(M.DATAVIZ, 'DARK')),
-        'DATAVIZ.LIGHT': toStyleString(variant(M.DATAVIZ, 'LIGHT')),
-        BACKDROP: toStyleString(M.BACKDROP),
-        'BACKDROP.DARK': toStyleString(variant(M.BACKDROP, 'DARK')),
-        'BACKDROP.LIGHT': toStyleString(variant(M.BACKDROP, 'LIGHT')),
-        OCEAN: toStyleString(M.OCEAN),
-        AQUARELLE: toStyleString(M.AQUARELLE),
-        'AQUARELLE.DARK': toStyleString(variant(M.AQUARELLE, 'DARK')),
-        'AQUARELLE.VIVID': toStyleString(variant(M.AQUARELLE, 'VIVID')),
-        LANDSCAPE: toStyleString(M.LANDSCAPE),
-        'LANDSCAPE.DARK': toStyleString(variant(M.LANDSCAPE, 'DARK')),
-        'LANDSCAPE.VIVID': toStyleString(variant(M.LANDSCAPE, 'VIVID')),
+        // Streets
+        STREETS: 'streets-v2',
+        'STREETS.DARK': 'streets-v2-dark',
+        'STREETS.LIGHT': 'streets-v2-light',
+        'STREETS.PASTEL': 'streets-v2-pastel',
+        // Outdoor
+        OUTDOOR: 'outdoor-v2',
+        'OUTDOOR.DARK': 'outdoor-v2-dark',
+        // Winter
+        WINTER: 'winter-v2',
+        'WINTER.DARK': 'winter-v2-dark',
+        // Satellite/Hybrid
+        SATELLITE: 'satellite',
+        HYBRID: 'hybrid', // deprecated at source but harmless string here
+        // Basic
+        BASIC: 'basic-v2',
+        'BASIC.DARK': 'basic-v2-dark',
+        'BASIC.LIGHT': 'basic-v2-light',
+        // Bright
+        BRIGHT: 'bright-v2',
+        'BRIGHT.DARK': 'bright-v2-dark',
+        'BRIGHT.LIGHT': 'bright-v2-light',
+        'BRIGHT.PASTEL': 'bright-v2-pastel',
+        // OSM
+        OPENSTREETMAP: 'openstreetmap',
+        // Topo
+        TOPO: 'topo-v2',
+        'TOPO.DARK': 'topo-v2-dark',
+        'TOPO.PASTEL': 'topo-v2-pastel',
+        'TOPO.TOPOGRAPHIQUE': 'topo-v2-topographique',
+        // Toner
+        TONER: 'toner-v2',
+        'TONER.LITE': 'toner-v2-lite',
+        // Dataviz
+        DATAVIZ: 'dataviz',
+        'DATAVIZ.DARK': 'dataviz-dark',
+        'DATAVIZ.LIGHT': 'dataviz-light',
+        // Backdrop
+        BACKDROP: 'backdrop',
+        'BACKDROP.DARK': 'backdrop-dark',
+        'BACKDROP.LIGHT': 'backdrop-light',
+        // Ocean
+        OCEAN: 'ocean',
+        // Aquarelle
+        AQUARELLE: 'aquarelle',
+        'AQUARELLE.DARK': 'aquarelle-dark',
+        'AQUARELLE.VIVID': 'aquarelle-vivid',
+        // Landscape
+        LANDSCAPE: 'landscape',
+        'LANDSCAPE.DARK': 'landscape-dark',
+        'LANDSCAPE.VIVID': 'landscape-vivid',
     };
 
-    // Normalize custom styles to plain strings if possible
+    // Normalize custom styles: keep strings, deep-clone objects to remove proxies
     const normalizedCustom = {};
-    try {
-        for (const [k, v] of Object.entries(customStyles || {})) {
-            normalizedCustom[k] = toStyleString(v);
+    for (const [k, v] of Object.entries(customStyles || {})) {
+        if (typeof v === 'string') normalizedCustom[k] = v;
+        else if (v && typeof v === 'object') {
+            try {
+                normalizedCustom[k] = JSON.parse(JSON.stringify(v));
+            } catch (_) {
+                normalizedCustom[k] = v;
+            }
         }
-    } catch (_) {}
+    }
 
     return { ...base, ...normalizedCustom };
 }
@@ -105,28 +93,19 @@ export function setupSdk(cfg) {
         window.__maptilerApiKey = cfg.apiKey;
     }
 
-    if (cfg.language) {
-        try {
-            maptilersdk.config.primaryLanguage = maptilersdk.toLanguageInfo(cfg.language);
-        } catch (_) {
-            // fallback silently; SDK default will apply
-        }
-    }
+    // Prevent SDK from mutating style language internally (avoids structuredClone on proxied data)
+    try {
+        maptilersdk.config.primaryLanguage = maptilersdk.toLanguageInfo('style_lock');
+    } catch (_) {}
 }
 
 export function applyLocale(map, language, translations = {}, container) {
     if (language) {
         language = language.toLowerCase();
         if (language === 'arabic') language = 'ar';
-        let primary;
         try {
-            primary = maptilersdk.toLanguageInfo(language);
-        } catch (_) {
-            primary = null;
-        }
-        try {
-            if (primary) map.setLanguage(primary);
-        } catch {}
+            applyLanguageSafely(map, language);
+        } catch (_) {}
     }
     if (translations && Object.keys(translations).length) {
         try {
@@ -135,6 +114,33 @@ export function applyLocale(map, language, translations = {}, container) {
         if (container) {
             applyControlTranslations(container, translations, language);
         }
+    }
+}
+
+// Minimal, clone-safe language application that avoids SDK's structuredClone usage
+function applyLanguageSafely(map, language) {
+    const style = map.getStyle && map.getStyle();
+    if (!style || !Array.isArray(style.layers)) return;
+    const flag = language === 'local' || language === 'style' ? 'name' : `name:${language}`;
+    const host = 'api.maptiler.com';
+
+    for (const layer of style.layers) {
+        if (!layer || layer.type !== 'symbol') continue;
+        const src = map.getSource(layer.source);
+        if (!src || !('url' in src) || typeof src.url !== 'string') continue;
+        try {
+            const url = new URL(src.url);
+            if (url.host !== host) continue;
+        } catch (_) {
+            continue;
+        }
+        const id = layer.id;
+        const existing = map.getLayoutProperty(id, 'text-field');
+        // Build a fresh expression, avoiding cloning any existing proxies
+        const expr = ['coalesce', ['get', flag], ['get', 'name']];
+        try {
+            map.setLayoutProperty(id, 'text-field', expr);
+        } catch (_) {}
     }
 }
 
@@ -611,9 +617,12 @@ export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
                 this.container.appendChild(label);
             }
             select = document.createElement('select');
-            const keys = Object.keys(styles).filter((key) =>
-                cfg.showSatelliteToggler ? key !== 'SATELLITE' : true
-            );
+            const keys = Object.keys(styles).filter((key) => {
+                if (cfg.showSatelliteToggler && key === 'SATELLITE') return false;
+                // Hide deprecated styles from the selector
+                if (key === 'HYBRID') return false;
+                return true;
+            });
             keys.forEach((key) => {
                 const option = document.createElement('option');
                 option.value = key;
@@ -822,4 +831,28 @@ export function recreateMapInstance() {
         this.marker.setLngLat([center.lng, center.lat]);
     }
     if (styleName) this.setStyle(styleName);
+}
+
+// Prevent SDK language warnings and null handling from bubbling to console
+export function guardSdkLanguage(map, cfg) {
+    try {
+        // Prefer a locked mode so SDK won't try to localize on its own
+        if (maptilersdk.Language && maptilersdk.Language.STYLE_LOCK) {
+            map.primaryLanguage = maptilersdk.Language.STYLE_LOCK;
+        }
+    } catch (_) {}
+    try {
+        const orig = map.setPrimaryLanguage ? map.setPrimaryLanguage.bind(map) : null;
+        if (orig) {
+            map.setPrimaryLanguage = (info) => {
+                // ignore null/undefined payloads that cause warnings
+                if (info == null) return;
+                // if our component manages language, skip SDK mutation
+                if (cfg && cfg.language) return;
+                try {
+                    orig(info);
+                } catch (_) {}
+            };
+        }
+    } catch (_) {}
 }

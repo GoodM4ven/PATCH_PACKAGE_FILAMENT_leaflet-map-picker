@@ -15,6 +15,7 @@ import {
     setStyle,
     hardRefreshSoon,
     recreateMapInstance,
+    guardSdkLanguage,
 } from './map-features.js';
 
 export default function mapTilerEntry({ location, config }) {
@@ -53,6 +54,7 @@ export default function mapTilerEntry({ location, config }) {
             };
 
             this.lock.attachMap((this.map = new maptilersdk.Map(mapOptions)));
+            try { guardSdkLanguage(this.map, this.config); } catch (_) {}
             const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
             hookInteractionGuards(containerEl, this.map, limiters, this.lock);
 
