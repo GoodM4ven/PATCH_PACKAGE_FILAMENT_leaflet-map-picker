@@ -728,7 +728,20 @@ export function hardRefreshSoon() {
 export function setStyle(styleName) {
     if (this.lock && this.lock.isLocked && this.lock.isLocked()) return;
     this.config.style = styleName;
-    const style = this.styles[styleName] || maptilersdk.MapStyle.STREETS;
+    let style = null;
+    // Prefer precomputed styles map if present
+    if (this.styles && typeof this.styles === 'object') {
+        style = this.styles[styleName];
+    }
+    // Fallback: rebuild styles map on the fly
+    if (!style) {
+        try {
+            const fallback = buildStyles(this.config?.customStyles || {});
+            style = fallback[styleName] || maptilersdk.MapStyle.STREETS;
+        } catch (_) {
+            style = maptilersdk.MapStyle.STREETS;
+        }
+    }
     try {
         this.map.setStyle(style);
     } catch (err) {
