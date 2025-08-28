@@ -67,8 +67,11 @@ export function setupSdk(cfg) {
     }
 
     if (cfg.language) {
-        const lang = maptilersdk.Language[cfg.language] || cfg.language;
-        maptilersdk.config.primaryLanguage = lang;
+        try {
+            maptilersdk.config.primaryLanguage = maptilersdk.toLanguageInfo(cfg.language);
+        } catch (_) {
+            // fallback silently; SDK default will apply
+        }
     }
 }
 
@@ -76,9 +79,14 @@ export function applyLocale(map, language, translations = {}, container) {
     if (language) {
         language = language.toLowerCase();
         if (language === 'arabic') language = 'ar';
-        const primary = maptilersdk.Language[language] || language;
+        let primary;
         try {
-            map.setLanguage(primary);
+            primary = maptilersdk.toLanguageInfo(language);
+        } catch (_) {
+            primary = null;
+        }
+        try {
+            if (primary) map.setLanguage(primary);
         } catch {}
     }
     if (translations && Object.keys(translations).length) {
