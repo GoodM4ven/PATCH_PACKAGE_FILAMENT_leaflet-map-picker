@@ -126,7 +126,7 @@ export default function mapTilerEntry({ location, config }) {
             }
 
             this.map.on('load', () => this.applyLocaleIfNeeded());
-            this.map.on('styledata', () => this.applyLocaleIfNeeded());
+            // No 'styledata' handler; applyLocaleIfNeeded defers to 'idle'
             this.map.on('styleimagemissing', () => {});
             attachWebglFailureProtection(this.map, this.styles, this.config, () => this.hardRefreshSoon());
         },

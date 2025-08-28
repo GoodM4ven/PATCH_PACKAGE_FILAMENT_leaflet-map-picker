@@ -131,7 +131,7 @@ export default function mapTilerPicker({ config }) {
             }
 
             this.map.on('load', () => this.applyLocaleIfNeeded());
-            this.map.on('styledata', () => this.applyLocaleIfNeeded());
+            // Defer label updates to idle inside applyLocaleIfNeeded; avoid mid-diff updates on 'styledata'
             attachWebglFailureProtection(this.map, this.styles, this.config, () => this.hardRefreshSoon());
 
             const markerOptions = { draggable: this.config.draggable };

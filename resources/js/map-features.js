@@ -93,26 +93,50 @@ export function setupSdk(cfg) {
         window.__maptilerApiKey = cfg.apiKey;
     }
 
-    // Prevent SDK from mutating style language internally (avoids structuredClone on proxied data)
-    try {
-        maptilersdk.config.primaryLanguage = maptilersdk.toLanguageInfo('style_lock');
-    } catch (_) {}
+    // If no explicit language provided, prefer STYLE_LOCK to avoid surprises
+    // When a language is provided, let the SDK manage it via map.setLanguage
+    if (!cfg.language) {
+        try {
+            maptilersdk.config.primaryLanguage = maptilersdk.toLanguageInfo('style_lock');
+        } catch (_) {}
+    }
 }
 
 export function applyLocale(map, language, translations = {}, container) {
-    if (language) {
-        language = language.toLowerCase();
-        if (language === 'arabic') language = 'ar';
+    // Normalize language code
+    let lang = language;
+    if (lang) {
+        lang = lang.toLowerCase();
+        if (lang === 'arabic') lang = 'ar';
+    }
+
+    // Defer label update until the style is idle to avoid mid-diff mutations
+    if (lang) {
         try {
-            applyLanguageSafely(map, language);
+            map.once('idle', () => {
+                try {
+                    // Prefer SDK-managed language mapping first
+                    const info = maptilersdk.toLanguageInfo(lang);
+                    if (info) {
+                        try {
+                            map.setLanguage(info);
+                            return;
+                        } catch (_) {}
+                    }
+                    // Fallback: manual label rewrite
+                    applyLanguageSafely(map, lang);
+                } catch (_) {}
+            });
         } catch (_) {}
     }
+
+    // Apply control translations immediately; these are DOM updates
     if (translations && Object.keys(translations).length) {
         try {
             map.setLocale(translations);
-        } catch {}
+        } catch (_) {}
         if (container) {
-            applyControlTranslations(container, translations, language);
+            applyControlTranslations(container, translations, lang);
         }
     }
 }
@@ -123,6 +147,17 @@ function applyLanguageSafely(map, language) {
     if (!style || !Array.isArray(style.layers)) return;
     const flag = language === 'local' || language === 'style' ? 'name' : `name:${language}`;
     const host = 'api.maptiler.com';
+
+    const containsNameToken = (val) => {
+        if (!val) return false;
+        if (typeof val === 'string') return /\{name(?::[^}]+)?\}/.test(val) || val.trim() === '{name}';
+        if (Array.isArray(val)) {
+            // Expression like ['get','name'] or ['get','name:ar'] or nested format/concat with such
+            if (val.length >= 2 && val[0] === 'get' && typeof val[1] === 'string' && val[1].startsWith('name')) return true;
+            for (const v of val) if (containsNameToken(v)) return true;
+        }
+        return false;
+    };
 
     for (const layer of style.layers) {
         if (!layer || layer.type !== 'symbol') continue;
@@ -136,6 +171,9 @@ function applyLanguageSafely(map, language) {
         }
         const id = layer.id;
         const existing = map.getLayoutProperty(id, 'text-field');
+        // Only override if the layer already has a text-field referencing {name...}
+        if (existing === undefined || existing === null) continue;
+        if (!containsNameToken(existing)) continue;
         // Build a fresh expression, avoiding cloning any existing proxies
         const expr = ['coalesce', ['get', flag], ['get', 'name']];
         try {
@@ -835,8 +873,9 @@ export function recreateMapInstance() {
 
 // Prevent SDK language warnings and null handling from bubbling to console
 export function guardSdkLanguage(map, cfg) {
+    // If language is provided, let SDK manage it; otherwise lock to style
+    if (cfg && cfg.language) return;
     try {
-        // Prefer a locked mode so SDK won't try to localize on its own
         if (maptilersdk.Language && maptilersdk.Language.STYLE_LOCK) {
             map.primaryLanguage = maptilersdk.Language.STYLE_LOCK;
         }
@@ -845,10 +884,7 @@ export function guardSdkLanguage(map, cfg) {
         const orig = map.setPrimaryLanguage ? map.setPrimaryLanguage.bind(map) : null;
         if (orig) {
             map.setPrimaryLanguage = (info) => {
-                // ignore null/undefined payloads that cause warnings
-                if (info == null) return;
-                // if our component manages language, skip SDK mutation
-                if (cfg && cfg.language) return;
+                if (info == null) return; // ignore null payloads
                 try {
                     orig(info);
                 } catch (_) {}
