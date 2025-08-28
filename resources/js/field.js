@@ -194,7 +194,17 @@ export default function mapTilerPicker({ config }) {
             this.addSearchButton();
         },
 
-        setStyle,
+        // Ensure styles getter exists before delegating
+        setStyle(styleName) {
+            if (!Object.getOwnPropertyDescriptor(this, 'styles')) {
+                Object.defineProperty(this, 'styles', {
+                    enumerable: false,
+                    configurable: true,
+                    get: () => _styles,
+                });
+            }
+            return setStyle.call(this, styleName);
+        },
         hardRefreshSoon,
         recreateMapInstance,
         applyLocaleIfNeeded,
