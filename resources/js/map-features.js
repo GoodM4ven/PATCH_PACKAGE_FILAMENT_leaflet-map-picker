@@ -109,15 +109,7 @@ export function applyLocale(map, language, translations = {}, container) {
         try {
             map.once('idle', () => {
                 try {
-                    // Prefer SDK-managed language mapping first
-                    const info = maptilersdk.toLanguageInfo(lang);
-                    if (info) {
-                        try {
-                            map.setLanguage(info);
-                            return;
-                        } catch (_) {}
-                    }
-                    // Fallback: manual label rewrite
+                    // Apply our clone-safe manual rewrite only
                     applyLanguageSafely(map, lang);
                 } catch (_) {}
             });
@@ -867,17 +859,40 @@ export function recreateMapInstance() {
 
 // Prevent SDK language warnings and null handling from bubbling to console
 export function guardSdkLanguage(map, cfg) {
-    // Keep default SDK behavior; just ignore null calls that would warn
+    // Intercept SDK language APIs to avoid proxy/clone issues; reroute to our safe rewrite
+    const toLangCode = (val) => {
+        try {
+            const info = maptilersdk.toLanguageInfo(val);
+            if (info && typeof info.flag === 'string') {
+                if (info.flag === 'name') return 'local';
+                if (info.flag.startsWith('name:')) return info.flag.split(':')[1];
+                return 'style';
+            }
+        } catch (_) {}
+        if (typeof val === 'string') return val.toLowerCase();
+        return null;
+    };
     try {
-        const orig = map.setPrimaryLanguage ? map.setPrimaryLanguage.bind(map) : null;
-        if (orig) {
-            map.setPrimaryLanguage = (info) => {
-                if (info == null) return; // ignore null payloads
-                try {
-                    orig(info);
-                } catch (_) {}
-            };
-        }
+        map.setLanguage = (val) => {
+            const code = toLangCode(val) || (cfg && cfg.language ? String(cfg.language).toLowerCase() : null);
+            if (!code) return;
+            try {
+                map.once('idle', () => applyLanguageSafely(map, code));
+            } catch (_) {
+                try { applyLanguageSafely(map, code); } catch (_) {}
+            }
+        };
+    } catch (_) {}
+    try {
+        map.setPrimaryLanguage = (val) => {
+            const code = toLangCode(val) || (cfg && cfg.language ? String(cfg.language).toLowerCase() : null);
+            if (!code) return;
+            try {
+                map.once('idle', () => applyLanguageSafely(map, code));
+            } catch (_) {
+                try { applyLanguageSafely(map, code); } catch (_) {}
+            }
+        };
     } catch (_) {}
 }
 
