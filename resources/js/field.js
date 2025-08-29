@@ -17,6 +17,7 @@ import {
     hardRefreshSoon,
     recreateMapInstance,
     guardSdkLanguage,
+    suppressBenignStartupErrors,
 } from './map-features.js';
 
 export default function mapTilerPicker({ config }) {
@@ -70,6 +71,8 @@ export default function mapTilerPicker({ config }) {
             this.map = new maptilersdk.Map(mapOptions);
             // Guard SDK language hooks to avoid null warnings and proxy cloning
             try { guardSdkLanguage(this.map, this.config); } catch (_) {}
+            // Suppress known benign MapLibre startup console noise
+            try { suppressBenignStartupErrors(this.map); } catch (_) {}
             this.lock.attachMap(this.map);
 
             const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;

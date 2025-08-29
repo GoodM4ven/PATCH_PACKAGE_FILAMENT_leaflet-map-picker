@@ -16,6 +16,7 @@ import {
     hardRefreshSoon,
     recreateMapInstance,
     guardSdkLanguage,
+    suppressBenignStartupErrors,
 } from './map-features.js';
 
 export default function mapTilerEntry({ location, config }) {
@@ -55,6 +56,7 @@ export default function mapTilerEntry({ location, config }) {
 
             this.lock.attachMap((this.map = new maptilersdk.Map(mapOptions)));
             try { guardSdkLanguage(this.map, this.config); } catch (_) {}
+            try { suppressBenignStartupErrors(this.map); } catch (_) {}
             const containerEl = this.map.getCanvasContainer?.() || this.map.getCanvas?.() || this.$refs.mapContainer;
             hookInteractionGuards(containerEl, this.map, limiters, this.lock);
 

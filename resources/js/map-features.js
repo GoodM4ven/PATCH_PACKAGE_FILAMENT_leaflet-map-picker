@@ -93,13 +93,7 @@ export function setupSdk(cfg) {
         window.__maptilerApiKey = cfg.apiKey;
     }
 
-    // If no explicit language provided, prefer STYLE_LOCK to avoid surprises
-    // When a language is provided, let the SDK manage it via map.setLanguage
-    if (!cfg.language) {
-        try {
-            maptilersdk.config.primaryLanguage = maptilersdk.toLanguageInfo('style_lock');
-        } catch (_) {}
-    }
+    // Do not force SDK language here; we manage labels after style is idle.
 }
 
 export function applyLocale(map, language, translations = {}, container) {
@@ -873,13 +867,7 @@ export function recreateMapInstance() {
 
 // Prevent SDK language warnings and null handling from bubbling to console
 export function guardSdkLanguage(map, cfg) {
-    // If language is provided, let SDK manage it; otherwise lock to style
-    if (cfg && cfg.language) return;
-    try {
-        if (maptilersdk.Language && maptilersdk.Language.STYLE_LOCK) {
-            map.primaryLanguage = maptilersdk.Language.STYLE_LOCK;
-        }
-    } catch (_) {}
+    // Keep default SDK behavior; just ignore null calls that would warn
     try {
         const orig = map.setPrimaryLanguage ? map.setPrimaryLanguage.bind(map) : null;
         if (orig) {
@@ -891,4 +879,28 @@ export function guardSdkLanguage(map, cfg) {
             };
         }
     } catch (_) {}
+}
+
+// Suppress a known benign MapLibre startup console error about proxy 'rgb'
+// Only active briefly during initial style load, then restored automatically.
+export function suppressBenignStartupErrors(map, timeoutMs = 4000) {
+    if (typeof window === 'undefined') return;
+    const prevOnError = window.onerror;
+    const handler = function (message, source, lineno, colno, error) {
+        try {
+            const msg = String(message || error?.message || '');
+            if (msg.includes("property 'rgb'") && msg.includes('proxy')) {
+                return true; // prevent logging
+            }
+        } catch (_) {}
+        return prevOnError ? prevOnError.apply(this, arguments) : false;
+    };
+    window.onerror = handler;
+    const restore = () => {
+        if (window.onerror === handler) window.onerror = prevOnError || null;
+    };
+    try {
+        map.once('idle', restore);
+    } catch (_) {}
+    setTimeout(restore, timeoutMs);
 }
