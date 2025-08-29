@@ -93,10 +93,13 @@ export function setupSdk(cfg) {
         window.__maptilerApiKey = cfg.apiKey;
     }
 
-    // Do not force SDK language here; we manage labels after style is idle.
+    // Force SDK to not mutate labels automatically; we handle localization ourselves.
+    try {
+        maptilersdk.config.primaryLanguage = maptilersdk.toLanguageInfo('style_lock');
+    } catch (_) {}
 }
 
-export function applyLocale(map, language, translations = {}, container) {
+export function applyLocale(map, language, translations = {}, container, styleKey = null) {
     // Normalize language code
     let lang = language;
     if (lang) {
@@ -104,8 +107,12 @@ export function applyLocale(map, language, translations = {}, container) {
         if (lang === 'arabic') lang = 'ar';
     }
 
+    // Skip localization for styles known to be sensitive (e.g., BASIC family)
+    const styleName = typeof styleKey === 'string' ? styleKey.toUpperCase() : '';
+    const isBasicFamily = styleName.startsWith('BASIC');
+
     // Defer label update until the style is idle to avoid mid-diff mutations
-    if (lang) {
+    if (lang && !isBasicFamily) {
         try {
             map.once('idle', () => {
                 try {
@@ -796,7 +803,7 @@ function applyControlTranslations(container, dict = {}, language) {
 }
 
 export function applyLocaleIfNeeded() {
-    applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer);
+    applyLocale(this.map, this.config.language, this.config.controlTranslations, this.$refs.mapContainer, this.config.style);
 }
 
 export function hardRefreshSoon() {
