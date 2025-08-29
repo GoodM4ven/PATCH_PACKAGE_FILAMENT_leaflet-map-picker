@@ -885,22 +885,44 @@ export function guardSdkLanguage(map, cfg) {
 // Only active briefly during initial style load, then restored automatically.
 export function suppressBenignStartupErrors(map, timeoutMs = 4000) {
     if (typeof window === 'undefined') return;
-    const prevOnError = window.onerror;
-    const handler = function (message, source, lineno, colno, error) {
+    const isBenign = (msg) => {
         try {
-            const msg = String(message || error?.message || '');
-            if (msg.includes("property 'rgb'") && msg.includes('proxy')) {
-                return true; // prevent logging
-            }
-        } catch (_) {}
+            const s = String(msg || '');
+            return s.includes("property 'rgb'") && s.includes('proxy');
+        } catch (_) {
+            return false;
+        }
+    };
+
+    // 1) window.onerror filter
+    const prevOnError = window.onerror;
+    const onErrorHandler = function (message, source, lineno, colno, error) {
+        const msg = message || (error && error.message);
+        if (isBenign(msg)) return true;
         return prevOnError ? prevOnError.apply(this, arguments) : false;
     };
-    window.onerror = handler;
-    const restore = () => {
-        if (window.onerror === handler) window.onerror = prevOnError || null;
+    window.onerror = onErrorHandler;
+
+    // 2) console.error/warn filter
+    const prevConsoleError = console.error;
+    const prevConsoleWarn = console.warn;
+    console.error = function (...args) {
+        if (args.length && isBenign(args[0])) return;
+        return prevConsoleError.apply(this, args);
     };
-    try {
-        map.once('idle', restore);
-    } catch (_) {}
+    console.warn = function (...args) {
+        if (args.length && isBenign(args[0])) return;
+        return prevConsoleWarn.apply(this, args);
+    };
+
+    const restore = () => {
+        if (window.onerror === onErrorHandler) window.onerror = prevOnError || null;
+        if (console.error === onErrorHandler) {
+            // never true, separate function; but keep for safety
+        }
+        console.error = prevConsoleError;
+        console.warn = prevConsoleWarn;
+    };
+    try { map.once('idle', restore); } catch (_) {}
     setTimeout(restore, timeoutMs);
 }
