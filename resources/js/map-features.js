@@ -189,10 +189,19 @@ export function createLock(cfg) {
             this.apply(true);
             this.startTicker();
             if (cfg.rateLimitEvent) {
-                Livewire.dispatch(cfg.rateLimitEvent, {
-                    statePath: cfg.statePath,
-                    resetMs: ms,
-                });
+                try {
+                    if (cfg.$wire && typeof cfg.$wire.dispatch === 'function') {
+                        cfg.$wire.dispatch(cfg.rateLimitEvent, {
+                            statePath: cfg.statePath,
+                            resetMs: ms,
+                        });
+                    } else if (typeof window !== 'undefined' && window.Livewire && typeof window.Livewire.dispatch === 'function') {
+                        window.Livewire.dispatch(cfg.rateLimitEvent, {
+                            statePath: cfg.statePath,
+                            resetMs: ms,
+                        });
+                    }
+                } catch (_) {}
             }
         },
         attachMap(mp) {
@@ -626,10 +635,10 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, stre
             const setIcon = () => {
                 if (cfg._satelliteActive) {
                     // Active icon
-                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"></path><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"></path></svg>';
+                    btn.innerHTML = '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"></path><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"></path></svg>';
                 } else {
                     // Inactive icon
-                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"></path><path d="M14 6l-4.22 5.63 1.25 1.67L14 9.33 19 16h-8.46l-4.01-5.37L1 18h22L14 6zM5 16l1.52-2.03L8.04 16H5z"></path></svg>';
+                    btn.innerHTML = '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"></path><path d="M14 6l-4.22 5.63 1.25 1.67L14 9.33 19 16h-8.46l-4.01-5.37L1 18h22L14 6zM5 16l1.52-2.03L8.04 16H5z"></path></svg>';
                 }
             };
             setIcon();

@@ -41,6 +41,8 @@ export default function mapTilerPicker({ config }) {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
+            // attach $wire so lock can dispatch Livewire events
+            try { this.config.$wire = this.$wire; } catch (_) {}
             this.styles = buildStyles();
             this.lock = createLock(this.config);
             this.lock.initUI(this.$refs.mapContainer);
