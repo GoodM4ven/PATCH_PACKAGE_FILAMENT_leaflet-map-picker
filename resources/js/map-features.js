@@ -618,8 +618,9 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, stre
             this.container.className = 'map-tiler-satellite-toggle maplibregl-ctrl maplibregl-ctrl-group';
             const btn = document.createElement('button');
             btn.type = 'button';
+            btn.classList.add('grid', 'justify-center', 'items-center');
             btn.setAttribute('aria-label', 'Toggle satellite');
-            btn.innerHTML = '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21.85,17.47l-5-8a1,1,0,0,0-1.7,0l-1,1.63L10.86,5.5a1,1,0,0,0-1.72,0l-7,12A1,1,0,0,0,3,19H21a1,1,0,0,0,.85-1.53ZM10.45,17H4.74L10,8l2.93,5Zm2.35,0L15,13.57h0L16,11.89,19.2,17Z"></path></svg>';
+            btn.innerHTML = '<svg class="w-4 h-4 stroke-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21.85,17.47l-5-8a1,1,0,0,0-1.7,0l-1,1.63L10.86,5.5a1,1,0,0,0-1.72,0l-7,12A1,1,0,0,0,3,19H21a1,1,0,0,0,.85-1.53ZM10.45,17H4.74L10,8l2.93,5Zm2.35,0L15,13.57h0L16,11.89,19.2,17Z"></path></svg>';
             btn.onclick = () => {
                 if (lock && lock.isLocked()) return;
                 if (typeof this.map._styleInFlight === 'boolean' ? this.map._styleInFlight : cfg._styleInFlight) return;
@@ -656,7 +657,7 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, stre
 }
 
 export function addStreetThemeToggleControl(map, styles, cfg, lock, limiters, setStyle) {
-    cfg._streetDarkActive = cfg.style === 'STREETS.DARK';
+    cfg._streetDarkActive = cfg.style === 'STREETS.PASTEL';
     class StreetThemeControl {
         onAdd(mp) {
             this.map = mp;
@@ -664,9 +665,10 @@ export function addStreetThemeToggleControl(map, styles, cfg, lock, limiters, se
             this.container.className = 'map-tiler-street-theme maplibregl-ctrl maplibregl-ctrl-group';
             const btn = document.createElement('button');
             btn.type = 'button';
+            btn.classList.add('grid', 'justify-center', 'items-center');
             const setIcon = () => {
                 btn.innerHTML = cfg._streetDarkActive
-                    ? '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>'
+                    ? '<svg class="w-4 h-4 stroke-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>'
                     : '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>';
             };
             setIcon();
@@ -678,7 +680,7 @@ export function addStreetThemeToggleControl(map, styles, cfg, lock, limiters, se
                 if (!token.ok) { lock && lock.lockFor(token.resetMs); return; }
                 cfg._streetDarkActive = !cfg._streetDarkActive;
                 setIcon();
-                const target = cfg._streetDarkActive ? 'STREETS.DARK' : 'STREETS';
+                const target = cfg._streetDarkActive ? 'STREETS.PASTEL' : 'STREETS';
                 if (setStyle) setStyle(target);
                 else map.setStyle(styles[target] || styles['STREETS']);
             };
