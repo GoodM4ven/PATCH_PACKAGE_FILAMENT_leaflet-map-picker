@@ -618,7 +618,9 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, stre
             this.container.className = 'map-tiler-satellite-toggle maplibregl-ctrl maplibregl-ctrl-group';
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.classList.add('grid', 'justify-center', 'items-center');
+            btn.style.display = 'grid';
+            btn.style.justifyContent = 'center';
+            btn.style.alignItems = 'center';
             btn.setAttribute('aria-label', 'Toggle satellite');
             btn.innerHTML = '<svg class="w-4 h-4 stroke-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21.85,17.47l-5-8a1,1,0,0,0-1.7,0l-1,1.63L10.86,5.5a1,1,0,0,0-1.72,0l-7,12A1,1,0,0,0,3,19H21a1,1,0,0,0,.85-1.53ZM10.45,17H4.74L10,8l2.93,5Zm2.35,0L15,13.57h0L16,11.89,19.2,17Z"></path></svg>';
             btn.onclick = () => {
@@ -665,7 +667,9 @@ export function addStreetThemeToggleControl(map, styles, cfg, lock, limiters, se
             this.container.className = 'map-tiler-street-theme maplibregl-ctrl maplibregl-ctrl-group';
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.classList.add('grid', 'justify-center', 'items-center');
+            btn.style.display = 'grid';
+            btn.style.justifyContent = 'center';
+            btn.style.alignItems = 'center';
             const setIcon = () => {
                 btn.innerHTML = cfg._streetDarkActive
                     ? '<svg class="w-4 h-4 stroke-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>'
