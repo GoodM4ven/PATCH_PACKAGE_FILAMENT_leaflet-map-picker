@@ -623,7 +623,16 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, stre
             btn.style.justifyContent = 'center';
             btn.style.alignItems = 'center';
             btn.setAttribute('aria-label', 'Toggle satellite');
-            btn.innerHTML = '<svg class="w-4 h-4 stroke-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21.85,17.47l-5-8a1,1,0,0,0-1.7,0l-1,1.63L10.86,5.5a1,1,0,0,0-1.72,0l-7,12A1,1,0,0,0,3,19H21a1,1,0,0,0,.85-1.53ZM10.45,17H4.74L10,8l2.93,5Zm2.35,0L15,13.57h0L16,11.89,19.2,17Z"></path></svg>';
+            const setIcon = () => {
+                if (cfg._satelliteActive) {
+                    // Active icon
+                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"></path><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"></path></svg>';
+                } else {
+                    // Inactive icon
+                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"></path><path d="M14 6l-4.22 5.63 1.25 1.67L14 9.33 19 16h-8.46l-4.01-5.37L1 18h22L14 6zM5 16l1.52-2.03L8.04 16H5z"></path></svg>';
+                }
+            };
+            setIcon();
             btn.onclick = () => {
                 if (lock && lock.isLocked()) return;
                 if (typeof this.map._styleInFlight === 'boolean' ? this.map._styleInFlight : cfg._styleInFlight) return;
@@ -636,6 +645,7 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, stre
                     if (setStyle) setStyle('SATELLITE');
                     else map.setStyle(styles['SATELLITE'] || styles['STREETS']);
                     btn.classList.add('active');
+                    setIcon();
                 } else {
                     cfg._satelliteActive = false;
                     const target = this.lastStyle || 'STREETS';
@@ -646,6 +656,7 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, stre
                     }
                     if (streetToggleEl) streetToggleEl.style.display = '';
                     btn.classList.remove('active');
+                    setIcon();
                 }
             };
             this.container.appendChild(btn);
