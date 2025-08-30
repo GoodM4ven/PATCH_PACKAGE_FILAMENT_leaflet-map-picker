@@ -100,37 +100,11 @@ export function setupSdk(cfg) {
 }
 
 export function applyLocale(map, language, translations = {}, container, styleKey = null) {
-    // Normalize language code
-    let lang = language;
-    if (lang) {
-        lang = lang.toLowerCase();
-        if (lang === 'arabic') lang = 'ar';
-    }
-
-    // Skip localization for styles known to be sensitive (e.g., BASIC family)
-    const styleName = typeof styleKey === 'string' ? styleKey.toUpperCase() : '';
-    const isBasicFamily = styleName.startsWith('BASIC');
-
-    // Defer label update until the style is idle to avoid mid-diff mutations
-    if (lang && !isBasicFamily) {
-        try {
-            map.once('idle', () => {
-                try {
-                    // Apply our clone-safe manual rewrite only
-                    applyLanguageSafely(map, lang);
-                } catch (_) {}
-            });
-        } catch (_) {}
-    }
-
-    // Apply control translations immediately; these are DOM updates
+    // Only apply control translations; skip label rewrites entirely to avoid style mutation issues
+    const lang = language ? String(language).toLowerCase() : null;
     if (translations && Object.keys(translations).length) {
-        try {
-            map.setLocale(translations);
-        } catch (_) {}
-        if (container) {
-            applyControlTranslations(container, translations, lang);
-        }
+        try { map.setLocale(translations); } catch (_) {}
+        if (container) applyControlTranslations(container, translations, lang);
     }
 }
 
@@ -716,7 +690,7 @@ export function addStreetThemeToggleControl(map, styles, cfg, lock, limiters, se
     }
     const ctrl = new StreetThemeControl();
     map.addControl(ctrl, 'top-right');
-    return ctrl;
+    return ctrl.container;
 }
 
 export async function tryReloadStyleWithBackoff(map, styles, cfg) {
