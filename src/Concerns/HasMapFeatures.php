@@ -229,7 +229,7 @@ trait HasMapFeatures
             'pinMove' => 10,
             'cameraMove' => 80,
             'search' => 10,
-            'styleSwitch' => 60,
+            'styleSwitch' => 10,
         ]);
 
         return array_merge($defaults, (array) $this->evaluate($this->rateLimits));

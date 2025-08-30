@@ -31,6 +31,7 @@ return [
             'pinMove' => 10,
             'cameraMove' => 80,
             'search' => 10,
+            'styleSwitch' => 10,
         ],
 
     ],
