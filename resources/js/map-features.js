@@ -635,55 +635,7 @@ export function hookInteractionGuards(container, map, limiters, lock) {
     });
 }
 
-export function addStyleSwitcherControl(map, styles, cfg, lock, setStyle) {
-    let select;
-    class TileControl {
-        onAdd(mp) {
-            this.map = mp;
-            this.container = document.createElement('div');
-            this.container.className = 'map-tiler-tile-selector maplibregl-ctrl maplibregl-ctrl-group';
-            if (cfg.styleSwitcherLabel) {
-                const label = document.createElement('label');
-                label.textContent = cfg.styleSwitcherLabel;
-                this.container.appendChild(label);
-            }
-            select = document.createElement('select');
-            const keys = Object.keys(styles).filter((key) => {
-                if (cfg.showSatelliteToggler && key === 'SATELLITE') return false;
-                // Hide deprecated styles from the selector
-                if (key === 'HYBRID') return false;
-                return true;
-            });
-            keys.forEach((key) => {
-                const option = document.createElement('option');
-                option.value = key;
-                option.textContent = formatStyleName(key);
-                if (key === cfg.style) option.selected = true;
-                select.appendChild(option);
-            });
-            select.onchange = (e) => {
-                if (lock && lock.isLocked()) return;
-                if (cfg.showSatelliteToggler && cfg._satelliteActive) return;
-                const name = e.target.value;
-                if (setStyle) setStyle(name);
-                else {
-                    const style = styles[name] || styles['STREETS'];
-                    map.setStyle(style);
-                }
-            };
-            this.container.appendChild(select);
-            return this.container;
-        }
-        onRemove() {
-            if (this.container && this.container.parentNode) this.container.parentNode.removeChild(this.container);
-            this.map = undefined;
-        }
-    }
-    map.addControl(new TileControl(), 'top-right');
-    return select;
-}
-
-export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, setStyle) {
+export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, streetToggleEl, setStyle) {
     cfg._satelliteActive = false;
     class SatelliteControl {
         onAdd(mp) {
@@ -692,16 +644,18 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, s
             this.container.className = 'map-tiler-satellite-toggle maplibregl-ctrl maplibregl-ctrl-group';
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.textContent = '🛰️';
             btn.setAttribute('aria-label', 'Toggle satellite');
+            btn.innerHTML = '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21.85,17.47l-5-8a1,1,0,0,0-1.7,0l-1,1.63L10.86,5.5a1,1,0,0,0-1.72,0l-7,12A1,1,0,0,0,3,19H21a1,1,0,0,0,.85-1.53ZM10.45,17H4.74L10,8l2.93,5Zm2.35,0L15,13.57h0L16,11.89,19.2,17Z"></path></svg>';
             btn.onclick = () => {
                 if (lock && lock.isLocked()) return;
+                const token = limiters && limiters.styleSwitch ? limiters.styleSwitch.try() : { ok: true };
+                if (!token.ok) { lock && lock.lockFor(token.resetMs); return; }
                 if (!cfg._satelliteActive) {
                     this.lastStyle = cfg.style;
                     cfg._satelliteActive = true;
-                    if (styleSelect) styleSelect.disabled = true;
+                    if (streetToggleEl) streetToggleEl.style.display = 'none';
                     if (setStyle) setStyle('SATELLITE');
-                    else map.setStyle(styles['SATELLITE'] || styles['HYBRID'] || styles['STREETS']);
+                    else map.setStyle(styles['SATELLITE'] || styles['STREETS']);
                     btn.classList.add('active');
                 } else {
                     cfg._satelliteActive = false;
@@ -711,10 +665,7 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, s
                         const style = styles[target] || styles['STREETS'];
                         map.setStyle(style);
                     }
-                    if (styleSelect) {
-                        styleSelect.disabled = false;
-                        styleSelect.value = target;
-                    }
+                    if (streetToggleEl) streetToggleEl.style.display = '';
                     btn.classList.remove('active');
                 }
             };
@@ -727,6 +678,45 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, styleSelect, s
         }
     }
     map.addControl(new SatelliteControl(), 'top-right');
+}
+
+export function addStreetThemeToggleControl(map, styles, cfg, lock, limiters, setStyle) {
+    cfg._streetDarkActive = cfg.style === 'STREETS.DARK';
+    class StreetThemeControl {
+        onAdd(mp) {
+            this.map = mp;
+            this.container = document.createElement('div');
+            this.container.className = 'map-tiler-street-theme maplibregl-ctrl maplibregl-ctrl-group';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const setIcon = () => {
+                btn.innerHTML = cfg._streetDarkActive
+                    ? '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>'
+                    : '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>';
+            };
+            setIcon();
+            btn.onclick = () => {
+                if (lock && lock.isLocked()) return;
+                if (cfg._satelliteActive) return;
+                const token = limiters && limiters.styleSwitch ? limiters.styleSwitch.try() : { ok: true };
+                if (!token.ok) { lock && lock.lockFor(token.resetMs); return; }
+                cfg._streetDarkActive = !cfg._streetDarkActive;
+                setIcon();
+                const target = cfg._streetDarkActive ? 'STREETS.DARK' : 'STREETS';
+                if (setStyle) setStyle(target);
+                else map.setStyle(styles[target] || styles['STREETS']);
+            };
+            this.container.appendChild(btn);
+            return this.container;
+        }
+        onRemove() {
+            if (this.container && this.container.parentNode) this.container.parentNode.removeChild(this.container);
+            this.map = undefined;
+        }
+    }
+    const ctrl = new StreetThemeControl();
+    map.addControl(ctrl, 'top-right');
+    return ctrl;
 }
 
 export async function tryReloadStyleWithBackoff(map, styles, cfg) {

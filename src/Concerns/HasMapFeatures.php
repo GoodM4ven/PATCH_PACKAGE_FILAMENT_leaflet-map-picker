@@ -32,11 +32,7 @@ trait HasMapFeatures
 
     protected string $style = 'STREETS';
 
-    protected bool $showStyleSwitcher = false;
-
     protected bool|Closure $showSatelliteToggler = true;
-
-    protected array $customStyles = [];
 
     protected ?array $customMarker = null;
 
@@ -233,6 +229,7 @@ trait HasMapFeatures
             'pinMove' => 10,
             'cameraMove' => 80,
             'search' => 10,
+            'styleSwitch' => 60,
         ]);
 
         return array_merge($defaults, (array) $this->evaluate($this->rateLimits));
@@ -338,18 +335,6 @@ trait HasMapFeatures
         return (string) $this->evaluate($this->style);
     }
 
-    public function showStyleSwitcher(): static
-    {
-        $this->showStyleSwitcher = true;
-
-        return $this;
-    }
-
-    public function getShowStyleSwitcher(): bool
-    {
-        return $this->showStyleSwitcher;
-    }
-
     public function withoutSatelliteToggler(bool|Closure $condition = true): static
     {
         $this->showSatelliteToggler = ! $condition;
@@ -360,18 +345,6 @@ trait HasMapFeatures
     public function getShowSatelliteToggler(): bool
     {
         return (bool) $this->evaluate($this->showSatelliteToggler);
-    }
-
-    public function customStyles(array|Closure $customStyles): static
-    {
-        $this->customStyles = $customStyles;
-
-        return $this;
-    }
-
-    public function getCustomStyles(): array
-    {
-        return (array) $this->evaluate($this->customStyles);
     }
 
     public function customMarker(?array $customMarker): static

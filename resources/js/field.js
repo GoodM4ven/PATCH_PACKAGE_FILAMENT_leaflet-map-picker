@@ -9,8 +9,8 @@ import {
     addGeolocateControl,
     hookNavButtons,
     hookInteractionGuards,
-    addStyleSwitcherControl,
     addSatelliteToggleControl,
+    addStreetThemeToggleControl,
     attachWebglFailureProtection,
     applyLocaleIfNeeded,
     setStyle,
@@ -41,7 +41,7 @@ export default function mapTilerPicker({ config }) {
             if (!Alpine.store('mt')) {
                 Alpine.store('mt', { searchQuery: '', localSearchResults: [], isSearching: false, searchTimeout: null });
             }
-            this.styles = buildStyles(this.config.customStyles);
+            this.styles = buildStyles();
             this.lock = createLock(this.config);
             this.lock.initUI(this.$refs.mapContainer);
             this.initMap();
@@ -125,12 +125,10 @@ export default function mapTilerPicker({ config }) {
                 });
             }
 
-            let styleSelect;
-            if (this.config.showStyleSwitcher) {
-                styleSelect = addStyleSwitcherControl(this.map, this.styles, this.config, this.lock, (s) => this.setStyle(s));
-            }
+            let streetToggleEl = null;
+            streetToggleEl = addStreetThemeToggleControl(this.map, this.styles, this.config, this.lock, _limiters, (s) => this.setStyle(s));
             if (this.config.showSatelliteToggler) {
-                addSatelliteToggleControl(this.map, this.styles, this.config, this.lock, styleSelect, (s) => this.setStyle(s));
+                addSatelliteToggleControl(this.map, this.styles, this.config, this.lock, _limiters, streetToggleEl, (s) => this.setStyle(s));
             }
 
             this.map.on('load', () => this.applyLocaleIfNeeded());
