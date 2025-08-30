@@ -622,6 +622,7 @@ export function addSatelliteToggleControl(map, styles, cfg, lock, limiters, stre
             btn.innerHTML = '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21.85,17.47l-5-8a1,1,0,0,0-1.7,0l-1,1.63L10.86,5.5a1,1,0,0,0-1.72,0l-7,12A1,1,0,0,0,3,19H21a1,1,0,0,0,.85-1.53ZM10.45,17H4.74L10,8l2.93,5Zm2.35,0L15,13.57h0L16,11.89,19.2,17Z"></path></svg>';
             btn.onclick = () => {
                 if (lock && lock.isLocked()) return;
+                if (typeof this.map._styleInFlight === 'boolean' ? this.map._styleInFlight : cfg._styleInFlight) return;
                 const token = limiters && limiters.styleSwitch ? limiters.styleSwitch.try() : { ok: true };
                 if (!token.ok) { lock && lock.lockFor(token.resetMs); return; }
                 if (!cfg._satelliteActive) {
@@ -672,6 +673,7 @@ export function addStreetThemeToggleControl(map, styles, cfg, lock, limiters, se
             btn.onclick = () => {
                 if (lock && lock.isLocked()) return;
                 if (cfg._satelliteActive) return;
+                if (typeof this.map._styleInFlight === 'boolean' ? this.map._styleInFlight : cfg._styleInFlight) return;
                 const token = limiters && limiters.styleSwitch ? limiters.styleSwitch.try() : { ok: true };
                 if (!token.ok) { lock && lock.lockFor(token.resetMs); return; }
                 cfg._streetDarkActive = !cfg._streetDarkActive;
@@ -778,6 +780,7 @@ export function hardRefreshSoon() {
 
 export function setStyle(styleName) {
     if (this.lock && this.lock.isLocked && this.lock.isLocked()) return;
+    if (this._styleInFlight) return;
     this.config.style = styleName;
     let style = null;
     // Prefer precomputed styles map if present
@@ -800,12 +803,28 @@ export function setStyle(styleName) {
             style = JSON.parse(JSON.stringify(style));
         } catch (_) {}
     }
-    try {
-        this.map.setStyle(style);
-    } catch (err) {
-        if (isTransientNetworkError(err)) this.hardRefreshSoon();
-        else console.error('setStyle failed:', err);
-    }
+    // Switch style with full replace (diff: false) and wait for idle to avoid mid-diff glitches
+    const doSwitch = () => {
+        try { this.map.stop?.(); } catch (_) {}
+        try {
+            this._styleInFlight = true;
+            this.map.setStyle(style, { diff: false });
+        } catch (err) {
+            this._styleInFlight = false;
+            if (isTransientNetworkError(err)) this.hardRefreshSoon();
+            else console.error('setStyle failed:', err);
+            return;
+        }
+        const release = () => { this._styleInFlight = false; };
+        const onIdle = () => {
+            this.map.off?.('idle', onIdle);
+            release();
+        };
+        try { this.map.once('idle', onIdle); } catch (_) { release(); }
+        // Fallback release in case idle never fires
+        setTimeout(() => release(), 2000);
+    };
+    doSwitch();
 }
 
 export function recreateMapInstance() {
