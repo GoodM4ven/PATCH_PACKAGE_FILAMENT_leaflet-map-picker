@@ -256,6 +256,7 @@ export function createLimiters(limitCfg) {
         pinMove: createRateLimiter(limitCfg.pinMove, interval),
         cameraMove: createRateLimiter(limitCfg.cameraMove, interval),
         search: createRateLimiter(limitCfg.search, interval),
+        styleSwitch: createRateLimiter(limitCfg.styleSwitch, interval),
     };
 }
 
